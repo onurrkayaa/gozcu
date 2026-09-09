@@ -1,0 +1,10 @@
+# Gozcu - Hafta 0 taban cizgisi olcumu icin sabitlenmis paket surumleri.
+# Surumler sabit; ayni requirements ile ayni sayilar uretilsin diye.
+# Kurulum: python3.13 -m venv .venv && .venv/bin/pip install -r requirements.txt
+ultralytics==8.4.144
+sahi==0.12.6
+pillow==12.3.0
+pandas==3.0.5
+tqdm==4.70.0
+matplotlib==3.11.1
+pytest==9.1.1

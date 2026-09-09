@@ -1,0 +1,19 @@
+# Sanal ortam
+.venv/
+
+# Veri kümesi - depoya girmez, boyutu büyük ve lisansı ayrı (CC BY 4.0)
+data/
+
+# Üretilen çıktılar - kod her seferinde yeniden üretir
+reports/
+
+# Model ağırlıkları - ilk çalıştırmada otomatik iner
+*.pt
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# macOS
+.DS_Store
