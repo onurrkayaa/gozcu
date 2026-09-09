@@ -51,7 +51,59 @@ def argumanlari_coz() -> argparse.Namespace:
         "--cikti", type=Path, default=RAPOR_KOK / "veri_istatistik.csv",
         help="Sonuc CSV dosyasinin yolu",
     )
+    ayrastirici.add_argument(
+        "--onek-cikti", type=Path, default=RAPOR_KOK / "onek_dagilimi.csv",
+        help="Kaynak (onek) bazli dagilimin yazilacagi CSV",
+    )
     return ayrastirici.parse_args()
+
+
+def onek_cikar(goruntu: Path) -> str:
+    """Dosya adindan kaynak onegini cikarir: train_ZRI_3035_... -> ZRI"""
+    parcalar = goruntu.stem.split("_")
+    return parcalar[1] if len(parcalar) > 1 else "?"
+
+
+def onek_dagilimi(bolumler: list[str], veri_kok: Path) -> list[dict]:
+    """Bolum ve kaynak onegi kirilimiyla goruntu/kutu sayilarini cikarir. Veri
+    kumesindeki kaynaklarin cok dengesiz dagildigini ve bolunmelerin kaynak
+    bazinda ayristigini gorunur kilar; tek bir birlesik metrigin neden yaniltici
+    oldugunu bu tablo belgeler."""
+    from collections import defaultdict
+
+    sayim = defaultdict(lambda: {"goruntu": 0, "kutu": 0, "bos": 0})
+    for bolum in bolumler:
+        goruntu_dizin, etiket_dizin = bolum_yolu(bolum, veri_kok)
+        for yol in goruntuleri_listele(goruntu_dizin):
+            etiket_dosya = etiket_yolu(yol, etiket_dizin)
+            kutu_sayisi = 0
+            if etiket_dosya.is_file():
+                kutu_sayisi = sum(
+                    1 for satir in etiket_dosya.read_text(encoding="utf-8").splitlines()
+                    if len(satir.split()) >= 5
+                )
+            # Hem bolum kiriliminda hem de butun veri kumesi icin sayiyoruz.
+            for anahtar in ((bolum, onek_cikar(yol)), ("HEPSI", onek_cikar(yol))):
+                g = sayim[anahtar]
+                g["goruntu"] += 1
+                g["kutu"] += kutu_sayisi
+                g["bos"] += (kutu_sayisi == 0)
+
+    sira = {b: i for i, b in enumerate(bolumler)}
+    satirlar = []
+    for (bolum, onek), g in sorted(
+        sayim.items(), key=lambda x: (sira.get(x[0][0], 9), -x[1]["kutu"])
+    ):
+        satirlar.append({
+            "bolum": bolum,
+            "onek": onek,
+            "goruntu_sayisi": g["goruntu"],
+            "kutu_sayisi": g["kutu"],
+            "kutu_goruntu_basina": sayi_bicimle(g["kutu"] / g["goruntu"], 2),
+            "bos_goruntu": g["bos"],
+            "bos_yuzde": sayi_bicimle(100 * g["bos"] / g["goruntu"], 1),
+        })
+    return satirlar
 
 
 def bolum_tara(bolum: str, veri_kok: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -177,7 +229,18 @@ def main() -> None:
         "kutu_alan_orani_medyan_yuzde",
     ])
 
-    print(f"\nCSV kaydedildi: {hedef}")
+    # Kaynak bazli dagilim ayri bir tabloya yazilir; kaynaklarin dengesizligi
+    # sonraki tum olcumlerin yorumunu belirledigi icin veri tanima adiminin
+    # parcasidir.
+    onek_satirlari = onek_dagilimi(arg.bolum, arg.veri)
+    hedef_onek = csv_yaz(arg.onek_cikti, onek_satirlari, kosu)
+
+    print("\n=== KAYNAK (ONEK) DAGILIMI - tum bolumler birlesik ===")
+    tablo_bas([s for s in onek_satirlari if s["bolum"] == "HEPSI"],
+              ["onek", "goruntu_sayisi", "kutu_sayisi", "kutu_goruntu_basina", "bos_yuzde"])
+
+    print(f"\nCSV kaydedildi        : {hedef}")
+    print(f"Onek dagilimi         : {hedef_onek}  ({len(onek_satirlari)} satir)")
 
 
 if __name__ == "__main__":

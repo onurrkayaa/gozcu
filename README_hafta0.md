@@ -266,7 +266,45 @@ kendini açıklar.
 
 ---
 
-## 6. Dosya düzeni
+## 6. Çıktı dosyaları — rapor için referans tablo
+
+Hafta 0'ın ürettiği her dosya, ne içerdiği ve hangi script tarafından üretildiği.
+Tümü `reports/` altındadır ve depoya girmez; her biri ilgili komut yeniden
+çalıştırılarak üretilebilir.
+
+| Dosya | İçerik | Üreten |
+|---|---|---|
+| `veri_istatistik.csv` | Bölüm başına görüntü sayısı, görüntü en/boy min-medyan-maks, toplam kutu, görüntü başına kutu, kutu en/boy piksel min-medyan-maks, kutu alanı / görüntü alanı oranı medyanı | `00_veri_incele.py` |
+| `onek_dagilimi.csv` | Bölüm × kaynak öneki kırılımıyla görüntü sayısı, kutu sayısı, görüntü başına kutu, boş görüntü oranı. Kaynakların dengesizliğini ve bölünmelerin kaynak bazında ayrıştığını belgeler | `00_veri_incele.py` |
+| `taban_cizgisi.csv` | İlk ölçüm: test bölümünün ilk 100 görüntüsü, güven eşiği başına TP/FN/recall/FP/precision | `01_taban_cizgisi.py` |
+| `taban_cizgisi_tam.csv` | Aynı ölçüm, test bölümünün tamamı (157 görüntü). Alt küme yanlılığını göstermek için eskisiyle karşılaştırılır | `01_taban_cizgisi.py` |
+| `taban_cizgisi_onek.csv` | **Ana taban çizgisi tablosu.** Üç bölüm birleşik (1579 görüntü), her kaynak × her güven eşiği için bir satır, artı `TOPLAM` ve `ZRI_HARIC` özet satırları | `01_taban_cizgisi.py` |
+| `kutu_bazinda_sonuc.csv` | Her gerçek kutu için ayrı satır: görüntü, bölüm, kaynak, kutu boyutu, güven eşiği, eşleşti mi, eşleşen tahminin skoru ve IoU'su. Toplu metriklerin sakladığı ayrıntıyı korur (bkz. 5.5) | `01_taban_cizgisi.py` |
+| `karolama_karsilastirma.csv` | Karolamalı (SAHI, 512px) ve karolamasız (tüm görüntü, 640'a küçültülür) ölçümün aynı görüntüler üzerinde karşılaştırması | `02_karolama_karsilastir.py` |
+| `ornek_secim.csv` | Görselleştirilen örneklerin listesi: sıra, tabaka, kaynak, etiket/tahmin/eşleşen/FP sayıları | `03_gorsellestir.py` |
+| `ornekler/` | 10 örnek görüntü (4 kalabalık + 4 az etiketli + 2 negatif); gerçek kutular yeşil, tahminler güven skoruyla kırmızı | `03_gorsellestir.py` |
+| `ornek_secim_BLI.csv`, `ornek_secim_GRO.csv`, `ornek_secim_CAB.csv` | Aynı seçim listesi, boyut modelinden sapan üç kaynak için ayrı ayrı | `03_gorsellestir.py --onek` |
+| `ornekler_BLI/`, `ornekler_GRO/`, `ornekler_CAB/` | Bu üç kaynağın örnek görselleri; düşük recall'ın sebebini gözle aramak için | `03_gorsellestir.py --onek` |
+| `onek_kutu_boyutu.csv` | Kaynak başına medyan kutu genişliği/yüksekliği/alanı/kenarı, üç eşikteki recall ve FP/görüntü | `04_kutu_boyutu_analiz.py` |
+| `recall_vs_kutu_boyutu.png` | Dağılım grafiği: x = medyan kutu kenarı, y = recall (conf=0.30), nokta alanı = kutu sayısı, eğilim çizgisiyle | `04_kutu_boyutu_analiz.py` |
+| `onek_kontrast.csv` | Kaynak başına medyan yerel kontrast (kutu içi ile çevre halkası arasındaki parlaklık farkı), kutu kenarı, recall ve boyut modelinden artık | `05_kontrast_analiz.py` |
+| `01_onek_kosu.log`, `01_tam_kosu.log`, `03_tabakali.log`, `03_anomali.log` | Uzun koşuların ekran çıktısı ve ilerleme kayıtları | ilgili script |
+
+Her CSV, sonucun hangi koşullarda üretildiğini `kosu_` önekli sütunlarda taşır
+(model, parametreler, kütüphane sürümleri, tarih, çalıştırılan komut), böylece tablo
+rapora tek başına konulduğunda da kendini açıklar.
+
+### Ana bulgular nerede
+
+| Soru | Dosya |
+|---|---|
+| Hazır model ne kadarını buluyor? | `taban_cizgisi_onek.csv`, `TOPLAM` satırları |
+| Karolama gerçekten gerekli mi? | `karolama_karsilastirma.csv` |
+| Tek bir recall sayısı neden yanıltıcı? | `onek_dagilimi.csv` + `taban_cizgisi_onek.csv` kaynak satırları |
+| Düşük recall boyuttan mı geliyor? | `onek_kutu_boyutu.csv`, `recall_vs_kutu_boyutu.png` |
+| Boyutun açıklamadığı kısım nereden? | `onek_kontrast.csv`, `ornekler_BLI/`, `ornekler_CAB/` |
+
+## 7. Dosya düzeni
 
 ```
 gozcu/
@@ -279,7 +317,9 @@ gozcu/
 │   ├── 00_veri_incele.py
 │   ├── 01_taban_cizgisi.py
 │   ├── 02_karolama_karsilastir.py
-│   └── 03_gorsellestir.py
+│   ├── 03_gorsellestir.py
+│   ├── 04_kutu_boyutu_analiz.py
+│   └── 05_kontrast_analiz.py
 ├── tests/
 │   └── test_eslestirme.py           # IoU ve eşleştirme testleri
 └── reports/                         # tüm çıktılar buraya yazılır
@@ -291,10 +331,14 @@ gozcu/
     ├── taban_cizgisi_onek.csv
     ├── kutu_bazinda_sonuc.csv
     ├── onek_kutu_boyutu.csv
+    ├── onek_kontrast.csv
     ├── recall_vs_kutu_boyutu.png
-    └── ornekler/
+    ├── ornekler/
+    └── ornekler_BLI/  ornekler_GRO/  ornekler_CAB/
 ```
 
-`scripts/ortak.py` üç scriptin de kullandığı ortak mantığı barındırır; tarama
-ayarları (karo rejimi, postprocess, person sınıf filtresi) orada tek yerde tanımlıdır,
-böylece üç ölçüm birbiriyle karşılaştırılabilir kalır.
+`scripts/ortak.py` bütün scriptlerin paylaştığı ortak mantığı barındırır: IoU,
+eşleştirme, YOLO etiketi okuma, metrik hesabı, CSV yazımı ve tarama fonksiyonları.
+Tarama ayarları (karo rejimi, `perform_standard_pred`, postprocess tipi, person sınıf
+filtresi) orada tek yerde tanımlıdır; böylece bütün ölçümler aynı rejimde çalışır ve
+birbiriyle karşılaştırılabilir kalır.
