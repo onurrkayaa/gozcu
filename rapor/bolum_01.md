@@ -259,9 +259,17 @@ sahip. Yani boyut recall'ı açıklıyor, yanlış alarmı açıklamıyor.
 ### 1.7. Hata taksonomisi: iki farklı hata türü
 
 Kutu boyutu modelinden sapmaya bakarak hataları iki gruba ayırdım. Burada **artık**
-(residual) terimini kullanıyorum: bir kaynağın gerçek recall'ı ile, yalnızca kutu
-boyutuna bakarak tahmin edilen recall'ı arasındaki fark. Artık sıfıra yakınsa o
-kaynağın performansı tamamen boyutuyla açıklanıyor demektir.
+(residual) terimini kullanıyorum: bir kaynağın gözlenen recall'ı ile, yalnızca kutu
+boyutuna bakarak öngörülen recall'ı arasındaki fark.
+
+Öngörüyü şöyle hesapladım: 17 kaynağın tamamı üzerine, medyan kutu kenarından recall'ı
+tahmin eden birinci dereceden bir doğru uydurdum (en küçük kareler). Elde edilen model
+
+> recall = 0,01451 × (medyan kutu kenarı, piksel) − 0,57450
+
+biçiminde. Artık ise **gözlenen recall eksi bu formülün öngördüğü recall**. Artık
+sıfıra yakınsa o kaynağın performansı tamamen boyutuyla açıklanıyor; belirgin negatifse
+kaynak, boyutunun öngördüğünden kötü sonuç veriyor demektir.
 
 #### A türü — çözünürlük kaynaklı
 
@@ -273,10 +281,14 @@ kaynağın performansı tamamen boyutuyla açıklanıyor demektir.
 | TRS | 42,5 px | 0,123 | +0,081 |
 
 *Bu tablo ne söylüyor:* Bu dört kaynak veri kümesindeki en küçük kutulara sahip.
-BRA, BRS ve SB'nin artık değerleri 0,011'in altında; yani gerçek recall'ları, yalnızca
+BRA, BRS ve SB'nin artık değerleri 0,011'in altında; yani gözlenen recall'ları, yalnızca
 kutu boyutuna bakan modelin öngördüğü değerden kayda değer biçimde sapmıyor ve düşük
 performansları için başka bir sebep aramaya gerek kalmıyor. TRS ise +0,081 artıkla
 boyutunun öngördüğünden **daha iyi** sonuç veriyor.
+
+**BULGU:** A türü hatalar çözünürlük kaynaklıdır. Dört kaynağın her birinde 96 ile 130
+arasında etiketli kutu var; bu, kaynak düzeyinde recall karşılaştırması yapmak için
+yeterli bir örneklem.
 
 Bu hata türü **çözünürlük problemi**. Çözümü de oradan geçiyor: daha küçük karo
 boyutu kullanmak, hedefi modele daha büyük göstermek demek.
@@ -294,8 +306,15 @@ piksel — veri kümesindeki en büyük kutulardan. Karşılaştırma için: ZRI
 64,9 piksel ve recall'ı 0,384, RAK'ınki 65,0 piksel ve recall'ı 0,392. BLI aynı kutu
 boyutuyla bunların yarısından az recall veriyor.
 
-Burada sorun çözünürlük değil, hedefin **görünümü**. Bu, daha küçük karoyla
-çözülmez; veri kümesine özgü eğitim gerektirir.
+Burada sorun çözünürlük değil, hedefin **görünümü** gibi görünüyor. Böyle bir sapma
+daha küçük karoyla çözülmez; veri kümesine özgü eğitim gerektirir.
+
+**HİPOTEZ:** Bu üç kaynakta toplam 101 kutu var ve üçü de bölüm 1.6'da az örnek olarak
+işaretlendi. Boyutun açıklamadığı sapma üç kaynakta birlikte görüldüğü için gerçek bir
+örüntü olması muhtemel; ancak tek tek kaynakların recall değerleri genelleme yapmak
+için yeterli örneğe dayanmıyor. Bu yüzden B türünü bulgu değil hipotez olarak
+sunuyorum; doğrulanması için bu kaynaklardan daha fazla örnek veya kutu bazında bir
+analiz gerekiyor.
 
 Bu iki türün ayrılması pratik bir sonuç doğuruyor: karolama parametrelerini
 iyileştirmek A türü hatalara yarar, B türüne yaramaz.
@@ -385,8 +404,8 @@ durumda. Bağımsız bir açıklama olarak kullanılamaz.
 
 ### 1.9. Açık kalan soru
 
-B türü kaynakların (BLI, GRO, CAB) sapması **açıklanamadı**. Kutu boyutu bu üç
-kaynağı açıklamıyor, kontrast da elendi.
+B türü sapma (BLI, GRO, CAB) bir hipotez olarak duruyor ve **sebebi açıklanamadı**.
+Kutu boyutu bu üç kaynağı açıklamıyor, kontrast da ölçülüp elendi.
 
 En güçlü adayım **arka planın doku karmaşıklığı**. CAB görsellerinde arazi, insan
 boyutunda ve insan şeklinde açık renkli kaya parçalarıyla dolu. Ortalama parlaklık
@@ -400,6 +419,26 @@ eklenmesi zor değil.
 
 **Bu ölçüm yapılmadı.** Doku karmaşıklığı şu an bir hipotez; raporda bulgu olarak
 sunulmamalıdır.
+
+#### 1.9.1 Yanlış pozitifler neye benziyor
+
+Doku karmaşıklığı hipotezini destekleyen bir gözlem, hatanın ters yönünden geliyor.
+
+Örnek görselleştirmeye kasten iki **negatif görüntü** dahil ettim — yani hiç etiketli
+insan içermeyen görüntüler. Amaç, modelin boş arazide ne ürettiğini görmekti. Bu iki
+görüntüde model toplam üç yanlış tespit yaptı (güven eşiği 0,15). Tespitler rastgele
+dağılmamıştı: açık renkli kaya parçalarının üzerinde toplanmışlardı ve incelediğim
+görüntüde ikisinin güven skoru 0,16 ile 0,17 idi — yani eşiğin hemen üstünde.
+
+Bu gözlem, doku karmaşıklığı hipoteziyle simetrik. Model, açık renkli kaya lekelerini
+insan sanıyor; aynı lekelerin arasındaki gerçek insanı ise kaçırıyor. İki hata birbirinin
+zıddı gibi görünse de tek bir kök sebepten çıkıyor olabilir: arka planda hedefle aynı
+ölçekte ve benzer görünümde bol miktarda leke bulunması.
+
+**GÖZLEM:** Bu, iki görüntüye ve üç yanlış tespite dayanan niteliksel bir izlenim.
+Ölçülmedi ve sayısal olarak sınanmadı. Yanlış pozitiflerin gerçekten kaya bölgelerinde
+yoğunlaştığını göstermek için, tespit konumlarının arka plan dokusuyla ilişkisini tüm
+veri kümesi üzerinde ölçmek gerekir.
 
 ---
 
@@ -416,17 +455,14 @@ sunulmamalıdır.
 | Tam bölüm (157) | 970 | 0,380 | 0,565 |
 
 *Bu tablo ne söylüyor:* Aynı model ve aynı ayarlarla, yalnızca ölçüme giren görüntü
-kümesini büyüterek recall 0,437'den 0,380'e indi, precision ise 0,442'den 0,565'e
-çıktı. İki metrik ters yönde değişti; yani alt küme sonucu tek yönlü bir hata değil,
-iki farklı yanlış izlenim veriyordu.
+kümesini büyüttüm. Alt küme **recall'ı yaklaşık 5,6 puan iyimser** (0,437'ye karşı
+0,380), **precision'ı ise yaklaşık 12,3 puan kötümser** (0,442'ye karşı 0,565)
+gösterdi. İki metrik ters yönde kaydı; yani yanlılık tek yönlü bir hata değil, iki
+farklı yanlış izlenim üretiyordu.
 
 İlk 100 görüntüde görüntü başına 2,52 kutu düşüyordu; kalan 57 görüntüde ise 12,60.
 Sebep şu: görüntüleri tekrar üretilebilirlik için dosya adına göre sıralıyorum ve
 listenin başındaki grup tek bir kaynaktan geliyordu.
-
-Sonuç: alt küme **recall'ı yaklaşık 5,6 puan iyimser**, **precision'ı yaklaşık 12,3
-puan kötümser** gösterdi. Yani yanlılık tek yönlü değil; iki metriği zıt yönlerde
-bozdu.
 
 **Ders:** Bir ölçümü hızlandırmak için ilk N örneği almak, dosya adları rastgele
 dağılmıyorsa yanlı bir örneklem yaratır. Alt küme sonucunu kullanmadan önce, alt
@@ -540,6 +576,8 @@ sayısının ve dolayısıyla sürenin artması; bu değiş tokuş ölçülmeli.
 
 **2. Doku karmaşıklığını ölçmek (bölüm 1.9'daki açık soru).** Kutu çevresindeki yerel
 varyans ve kenar yoğunluğu hesaplanıp B türü kaynakların artığıyla karşılaştırılmalı.
+Bu, B türü sapmanın hipotez olmaktan çıkıp bulguya dönüşüp dönüşemeyeceğini de
+belirleyecek.
 İlişki çıkarsa hata taksonomisi tamamlanmış olur; çıkmazsa başka aday aranmalı.
 
 **3. Güven eşiği eğrisini sıklaştırmak.** Şu an elimde üç nokta var. Karolamalı ve
@@ -550,8 +588,9 @@ Daha sık eşik örneklemesi bu karşılaştırmayı mümkün kılar.
 ölçüm o noktadan sonra geçersiz hale gelir. Eğitim başlamadan önce yapılacak tüm
 eğitimsiz ölçümlerin tamamlanmış olması gerekiyor.
 
-B türü hatalar (BLI, GRO, CAB) karolama parametreleriyle çözülmeyecek. Onlar için
-veri kümesine özgü eğitim gerekiyor; model eğitimi adımının asıl gerekçesi bu bulgu.
+B türü sapma (BLI, GRO, CAB) karolama parametreleriyle çözülmeyecek gibi görünüyor.
+Doğrulanırsa, bu kaynaklar için veri kümesine özgü eğitim gerekecek; model eğitimi
+adımının gerekçelerinden biri bu hipotez.
 
 #### 1.12.2 Bir sonraki adım: sistem iskeleti
 
@@ -616,12 +655,13 @@ Roboflow'un dağıtım künyesi:
 }
 ```
 
-**Doğrulama.** Ayna kullandığım için, indirilen görüntülerin orijinal çözünürlükte
-olup olmadığını varsaymak yerine ölçtüm. `00_veri_incele.py`, üç bölümdeki 1.579
-görüntünün tamamının **4000×3000 piksel** olduğunu doğruladı (genişlik ve yükseklik
-için en küçük, medyan ve en büyük değerler aynı çıktı). Roboflow aynaları bazen
-görüntüleri yeniden boyutlandırır; öyle olsaydı bu projenin tüm karolama gerekçesi
-geçersiz kalırdı.
+**Doğrulama.** Bu projede dağıtım platformu görüntüleri gerçekten yeniden
+boyutlandırdı: ilk indirdiğim sürümde görüntüler 4000×3000 yerine 640×640 geldi.
+Ayrıntısı bölüm 1.10.5'te. Yeniden boyutlandırma ön işlemesini kaldırıp tam
+çözünürlüklü sürümü yeniden dışa aktardım, sonra sonucu varsaymak yerine ölçtüm:
+`00_veri_incele.py`, üç bölümdeki 1.579 görüntünün tamamının **4000×3000 piksel**
+olduğunu doğruladı (genişlik ve yükseklik için en küçük, medyan ve en büyük değerler
+aynı çıktı).
 
 - İçerik: 1.579 görüntü, tek sınıf, 3.073 etiketli kutu.
 - Veri kümesindeki sınıf adı `human`, kullandığım COCO modelindeki karşılığı `person`.
@@ -683,6 +723,7 @@ her sayı bu dosyalardan okunmuştur; hiçbiri elle girilmemiştir.
 | `karolama_karsilastirma.csv` | Karolamalı ve karolamasız ölçümün aynı görüntüler üzerinde karşılaştırması | `02_karolama_karsilastir.py` |
 | `ornek_secim.csv` | Görselleştirilen örneklerin listesi: tabaka, kaynak, etiket/tahmin/eşleşen/yanlış pozitif sayıları | `03_gorsellestir.py` |
 | `ornekler/` | Örnek görüntüler; gerçek kutular yeşil, tahminler güven skoruyla kırmızı | `03_gorsellestir.py` |
+| `ornek_secim_BLI.csv`, `ornek_secim_GRO.csv`, `ornek_secim_CAB.csv` | Aynı seçim listesi, boyut modelinden sapan üç kaynak için ayrı ayrı | `03_gorsellestir.py` |
 | `ornekler_BLI/`, `ornekler_GRO/`, `ornekler_CAB/` | Boyut modelinden sapan üç kaynağın örnek görselleri | `03_gorsellestir.py` |
 | `onek_kutu_boyutu.csv` | Kaynak başına medyan kutu genişliği/yüksekliği/alanı/kenarı, üç eşikteki recall ve FP/görüntü | `04_kutu_boyutu_analiz.py` |
 | `recall_vs_kutu_boyutu.png` | Bölüm 1.6'daki dağılım grafiği | `04_kutu_boyutu_analiz.py` |
