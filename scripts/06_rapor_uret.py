@@ -19,6 +19,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     HRFlowable,
+    Image,
     KeepTogether,
     PageBreak,
     Paragraph,
@@ -180,6 +181,11 @@ def stiller() -> dict[str, ParagraphStyle]:
         "tablo_baslik": ParagraphStyle("tablo_baslik", parent=temel["Normal"],
                                        fontName="Govde-Bold", fontSize=8.2, leading=11,
                                        textColor=METIN_RENK),
+        "gorsel_aciklama": ParagraphStyle("gorsel_aciklama", parent=temel["Normal"],
+                                          fontName="Govde-Italic", fontSize=8.4,
+                                          leading=11.5, alignment=TA_CENTER,
+                                          spaceBefore=4, spaceAfter=10,
+                                          textColor=SOLUK_RENK),
     }
 
 
@@ -214,9 +220,37 @@ def tablo_uret(satirlar: list[str], st: dict, genislik: float) -> Table:
     return tablo
 
 
-def akis_uret(markdown: str, st: dict, genislik: float) -> list:
+def gorsel_uret(yol_metni: str, aciklama: str, st: dict, genislik: float,
+                kokler: list[Path]) -> list:
+    """Markdown resim sozdiziminden bir gorsel ve altina aciklama yazisi uretir.
+    Gorsel, en-boy orani korunarak sayfa genisligine sigdirilir."""
+    aday = None
+    for kok in kokler:
+        olasi = (kok / yol_metni).resolve()
+        if olasi.is_file():
+            aday = olasi
+            break
+    if aday is None:
+        # Gorsel bulunamazsa rapor uretimi durmasin; yerine not birakilir.
+        return [Paragraph(f"[gorsel bulunamadi: {html.escape(yol_metni)}]", st["gorsel_aciklama"])]
+
+    from reportlab.lib.utils import ImageReader
+
+    asil_g, asil_y = ImageReader(str(aday)).getSize()
+    olcek = min(genislik / asil_g, 1.0)
+    parcalar = [Spacer(1, 6),
+                Image(str(aday), width=asil_g * olcek, height=asil_y * olcek)]
+    if aciklama:
+        parcalar.append(Paragraph(satir_ici(aciklama), st["gorsel_aciklama"]))
+    else:
+        parcalar.append(Spacer(1, 8))
+    return parcalar
+
+
+def akis_uret(markdown: str, st: dict, genislik: float, kokler: list[Path] | None = None) -> list:
     """Markdown metnini reportlab akis nesnelerine (Flowable) cevirir."""
     akis: list = []
+    kokler = kokler or [PROJE_KOK]
     satirlar = markdown.split("\n")
     i = 0
     kapak_bitti = False
@@ -242,6 +276,13 @@ def akis_uret(markdown: str, st: dict, genislik: float) -> list:
                 for k in kod_satirlari:
                     akis.append(Paragraph(k.replace(" ", "&nbsp;") or "&nbsp;", st["kod"]))
                 akis.append(Spacer(1, 7))
+            continue
+
+        # Gorsel: ![aciklama](yol)
+        gorsel = re.fullmatch(r"!\[(.*)\]\(([^)]+)\)", kirpik)
+        if gorsel:
+            akis.extend(gorsel_uret(gorsel.group(2), gorsel.group(1), st, genislik, kokler))
+            i += 1
             continue
 
         # Tablo
@@ -310,7 +351,7 @@ def akis_uret(markdown: str, st: dict, genislik: float) -> list:
         parcalar = [kirpik]
         i += 1
         while i < len(satirlar) and satirlar[i].strip() and not re.match(
-            r"^(#{1,4}\s|\||>|```|[-*]\s|\d+\.\s|-{3,}$)", satirlar[i].strip()
+            r"^(#{1,4}\s|\||>|```|!\[|[-*]\s|\d+\.\s|-{3,}$)", satirlar[i].strip()
         ):
             parcalar.append(satirlar[i].strip())
             i += 1
@@ -321,7 +362,7 @@ def akis_uret(markdown: str, st: dict, genislik: float) -> list:
     return akis
 
 
-def pdf_uret(markdown: str, hedef: Path) -> Path:
+def pdf_uret(markdown: str, hedef: Path, kokler: list[Path]) -> Path:
     """Birlesik markdown metninden PDF uretir."""
     hedef.parent.mkdir(parents=True, exist_ok=True)
     belge = SimpleDocTemplate(
@@ -341,7 +382,7 @@ def pdf_uret(markdown: str, hedef: Path) -> Path:
         tuval.drawCentredString(A4[0] / 2, 10 * mm, str(tuval.getPageNumber()))
         tuval.restoreState()
 
-    belge.build(akis_uret(markdown, st, genislik),
+    belge.build(akis_uret(markdown, st, genislik, kokler),
                 onFirstPage=sayfa_alti, onLaterPages=sayfa_alti)
     return hedef
 
@@ -372,7 +413,8 @@ def main() -> None:
             "Sistemde gomulebilir TrueType font bulunamadi. PDF uretmeden cikiliyor;\n"
             "birlesik markdown yazildi. --pdf-yok ile bu adimi atlayabilirsiniz."
         )
-    print(f"PDF      : {pdf_uret(birlesik, pdf_cikti)}")
+    # Gorsel yollari once rapor klasorune, sonra proje kokune gore aranir.
+    print(f"PDF      : {pdf_uret(birlesik, pdf_cikti, [arg.rapor_kok, PROJE_KOK])}")
 
 
 if __name__ == "__main__":

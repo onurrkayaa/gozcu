@@ -2,16 +2,14 @@
 
 *(veri doğrulama, karolama karşılaştırması, taban çizgisi ölçümü, hedef boyutu analizi)*
 
-**Havadan çekilmiş arama-kurtarma görüntülerinde insan tespiti: taban çizgisi ölçümü**
-
 Bu raporda, hazır bir nesne tespit modelinin havadan çekilmiş arama-kurtarma
 görüntülerinde ne kadar başarılı olduğunu ölçtüm. Bu aşamada **hiç model
 eğitmedim**. Amacım, projeye devam etmeden önce başlangıç noktasının nerede
 olduğunu sayılarla görmekti. Buna *taban çizgisi* (baseline) diyorum: sonraki
 çalışmaların kendisiyle karşılaştırılacağı, üzerine iyileştirme yapılacak ilk ölçüm.
 
-Kullandığım tüm sayılar `reports/` klasöründeki CSV dosyalarından gelir. Hangi
-sayının hangi dosyada olduğu `README_hafta0.md` bölüm 6'daki tabloda listelidir.
+Kullandığım tüm sayılar ölçüm scriptlerinin ürettiği çıktı dosyalarından gelir.
+Ölçüm çıktıları ve hangi sayının nereden geldiği bölüm 1.15'te listelidir.
 
 ---
 
@@ -49,9 +47,12 @@ gelen nesnelerin en az bir karoda bütün olarak yakalanmasını sağlıyor.
 Karolama işini SAHI kütüphanesiyle yaptım. SAHI, karolara ayırma ve sonuçları tekrar
 birleştirme işini üstleniyor.
 
-Bunun bedeli hız. Bir 4000×3000 görüntü %20 örtüşmeyle yaklaşık 90 karoya bölünüyor,
-yani model 90 kez çalışıyor. Ölçümlerimde bu, görüntü başına **5,7–6,2 saniye**
-sürdü (yalnızca CPU, GPU yok).
+Bunun bedeli hız. %20 örtüşmede karolar arası adım 512 − (512 × 0,20) = 410 piksel
+olur; 4000×3000 bir görüntü bu adımla yatayda 10, dikeyde 8 karoya, yani toplam **80
+karoya** bölünür. Bu sayıyı tahmin etmedim, karolama kütüphanesinin karo koordinatlarını
+üreten fonksiyonunu bu boyutlarla çalıştırıp saydırdım. Model her görüntü için 80 kez
+çalışıyor. Ölçümlerimde bu, görüntü başına **5,7–6,2 saniye** sürdü (yalnızca CPU,
+GPU yok).
 
 ---
 
@@ -69,10 +70,16 @@ yüksek olan öncelikli işlenir.
 
 | Metrik | Anlamı |
 |---|---|
-| **Recall (duyarlılık)** | Gerçekte var olan insanların yüzde kaçını buldu. 100 kişiden 38'ini bulduysa recall 0,38. |
+| **Recall (duyarlılık)** | Gerçekte var olan insanların yüzde kaçını buldu. 100 kişiden 27'sini bulduysa recall 0,27. |
 | **Yanlış pozitif (FP)** | Modelin "burada insan var" dediği ama aslında insan olmayan tespitler. |
 | **FP/görüntü** | Görüntü başına ortalama kaç yanlış alarm. |
 | **Precision (kesinlik)** | Modelin yaptığı tespitlerin yüzde kaçı doğruydu. |
+
+*Bu tablo ne söylüyor:* Dört metrik iki soruyu ayrı ayrı yanıtlıyor. Recall ve
+kaçırılan sayısı "aradığımızı bulabildik mi" sorusunu, yanlış pozitif ve precision
+ise "bulduklarımızın ne kadarı işe yarar" sorusunu ölçüyor. Bir eşiği değiştirmek
+ikisini zıt yönde etkilediği için, tek bir metrik sistemin durumunu anlatmaya
+yetmiyor.
 
 **Recall'ı birincil metrik seçtim.** Sebebi arama-kurtarma bağlamının kendisi:
 kaçırılan bir kişi geri gelmez, ama yanlış alarm sadece operatörün birkaç saniyesini
@@ -192,7 +199,11 @@ Her kaynak için etiket kutularının medyan boyutunu hesapladım ve recall ile
 karşılaştırdım. Kutu genişliği ile yüksekliğini tek bir sayıda birleştirmek için
 **kutu kenarı** ölçüsünü kullandım: kutu alanının karekökü.
 
-Sonuç, kutu boyutu ile recall arasında güçlü bir ilişki:
+Sonuç, kutu boyutu ile recall arasında güçlü bir ilişki. Aşağıdaki tabloda iki
+katsayı var: **Pearson r** iki değişken arasındaki doğrusal ilişkinin gücünü ölçer
+(+1 mükemmel pozitif ilişki, 0 ilişki yok demektir); **Spearman ρ** aynı şeyi
+değerlerin kendisiyle değil sıralamalarıyla ölçer, bu yüzden uç değerlerden daha az
+etkilenir.
 
 | Ölçüm | Pearson r | Spearman ρ |
 |---|---|---|
@@ -200,9 +211,6 @@ Sonuç, kutu boyutu ile recall arasında güçlü bir ilişki:
 | En büyük değer (CAP) hariç | +0,759 | +0,600 |
 | En az 50 kutusu olan 11 kaynak | **+0,911** | +0,664 |
 | En az 100 kutusu olan 8 kaynak | +0,902 | +0,595 |
-
-Pearson r, iki değişken arasındaki doğrusal ilişkinin gücünü ölçer; +1 mükemmel
-pozitif ilişki, 0 ilişki yok demektir.
 
 *Bu tablo ne söylüyor:* İlişki tek bir uç değere dayanmıyor. En önemlisi, **örneklemi
 küçük kaynakları çıkardıkça ilişki zayıflamıyor, güçleniyor** (+0,82'den +0,91'e).
@@ -213,8 +221,38 @@ ilişki gerçek.
 **BULGU:** Kaynaklar arası recall farkının büyük kısmını hedef boyutu açıklıyor.
 3.073 kutu üzerinden, ≥50 kutulu kaynaklarda r = +0,911.
 
-Ana görsel: `reports/recall_vs_kutu_boyutu.png` — her nokta bir kaynak, yatay eksen
-medyan kutu kenarı, dikey eksen recall, nokta büyüklüğü o kaynaktaki kutu sayısı.
+![Kaynak bazında recall ile medyan etiket kutusu boyutu arasındaki ilişki. Her nokta bir kaynağı gösterir; yatay eksen medyan kutu kenarı (alanın karekökü, piksel), dikey eksen güven eşiği 0,30'daki recall, nokta alanı o kaynaktaki kutu sayısıyla orantılıdır. Kesikli çizgi doğrusal eğilimi gösterir.](reports/recall_vs_kutu_boyutu.png)
+
+Aşağıda 17 kaynağın tamamı yer alıyor. Kutu sayısı 50'nin altında olan kaynaklar
+**az örnek** olarak işaretlendi; bunların tek tek recall değerleri güvenilir sonuç
+çıkarmak için yeterli örneğe dayanmıyor, tabloda bütünlük olsun diye gösteriliyorlar.
+
+| Kaynak | Kutu | Medyan kutu kenarı | Recall (0,30) | FP/görüntü | Not |
+|---|---|---|---|---|---|
+| ZRI | 1.297 | 64,9 px | 0,384 | 2,59 | |
+| MED | 338 | 63,2 px | 0,281 | 0,53 | |
+| GOR | 260 | 63,1 px | 0,308 | 2,87 | |
+| BRK | 216 | 61,9 px | 0,310 | 0,21 | |
+| VRD | 205 | 58,9 px | 0,410 | 0,49 | |
+| TRS | 130 | 42,5 px | 0,123 | 0,22 | |
+| BRS | 102 | 44,9 px | 0,069 | 0,59 | |
+| BRA | 100 | 43,8 px | 0,050 | 0,41 | |
+| JAS | 98 | 59,1 px | 0,378 | 0,31 | |
+| SB | 96 | 46,6 px | 0,094 | 0,30 | |
+| RAK | 51 | 65,0 px | 0,392 | 0,25 | |
+| BLI | 46 | 66,9 px | 0,196 | 0,11 | az örnek |
+| CAP | 44 | 74,4 px | 0,614 | 0,22 | az örnek |
+| CAB | 34 | 53,0 px | 0,088 | 0,00 | az örnek |
+| BLA | 22 | 60,7 px | 0,318 | 1,12 | az örnek |
+| GRO | 21 | 55,7 px | 0,095 | 0,10 | az örnek |
+| MOB | 13 | 58,5 px | 0,385 | 0,60 | az örnek |
+
+*Bu tablo ne söylüyor:* Kutu boyutu ile recall birlikte hareket ediyor. Kutu kenarı 60
+pikselin üzerindeki kaynaklar genellikle 0,28–0,41 aralığında recall veriyor; 42–47
+piksel aralığındaki dört kaynak ise 0,05–0,12 aralığına düşüyor. Yanlış alarm yükü
+boyutla aynı düzenliliği göstermiyor: görüntü başına FP 0,00 ile 2,87 arasında
+değişiyor ve en yüksek iki değer (GOR ve ZRI) birbirinden çok farklı recall'lara
+sahip. Yani boyut recall'ı açıklıyor, yanlış alarmı açıklamıyor.
 
 ---
 
@@ -235,9 +273,10 @@ kaynağın performansı tamamen boyutuyla açıklanıyor demektir.
 | TRS | 42,5 px | 0,123 | +0,081 |
 
 *Bu tablo ne söylüyor:* Bu dört kaynak veri kümesindeki en küçük kutulara sahip.
-Artık değerleri neredeyse sıfır — yani düşük recall'ları tamamen kutu boyutlarıyla
-açıklanıyor, başka bir sebep aramaya gerek yok. TRS ise boyutunun öngördüğünden daha
-iyi performans veriyor.
+BRA, BRS ve SB'nin artık değerleri 0,011'in altında; yani gerçek recall'ları, yalnızca
+kutu boyutuna bakan modelin öngördüğü değerden kayda değer biçimde sapmıyor ve düşük
+performansları için başka bir sebep aramaya gerek kalmıyor. TRS ise +0,081 artıkla
+boyutunun öngördüğünden **daha iyi** sonuç veriyor.
 
 Bu hata türü **çözünürlük problemi**. Çözümü de oradan geçiyor: daha küçük karo
 boyutu kullanmak, hedefi modele daha büyük göstermek demek.
@@ -376,6 +415,11 @@ sunulmamalıdır.
 | İlk 100 görüntü | 252 | 0,437 | 0,442 |
 | Tam bölüm (157) | 970 | 0,380 | 0,565 |
 
+*Bu tablo ne söylüyor:* Aynı model ve aynı ayarlarla, yalnızca ölçüme giren görüntü
+kümesini büyüterek recall 0,437'den 0,380'e indi, precision ise 0,442'den 0,565'e
+çıktı. İki metrik ters yönde değişti; yani alt küme sonucu tek yönlü bir hata değil,
+iki farklı yanlış izlenim veriyordu.
+
 İlk 100 görüntüde görüntü başına 2,52 kutu düşüyordu; kalan 57 görüntüde ise 12,60.
 Sebep şu: görüntüleri tekrar üretilebilirlik için dosya adına göre sıralıyorum ve
 listenin başındaki grup tek bir kaynaktan geliyordu.
@@ -435,6 +479,28 @@ dosyası duruyordu ama onu üreten kod hiçbir yerde kayıtlı değildi — yani
 
 ---
 
+#### 1.10.5 Dağıtım platformunun varsayılanları
+
+Veri kümesini ilk indirdiğimde görüntüler **640×640 piksel** geldi. Oysa HERIDAL'in
+orijinal görüntüleri 4000×3000.
+
+Sebep, veri kümesini aldığım dağıtım platformunun dışa aktarımda varsayılan olarak
+yeniden boyutlandırma ön işlemesi uygulamasıydı. Bu ön işlemeyi fark etmeseydim, tüm
+projenin gerekçesi çökerdi: 640×640 bir görüntüde insanlar zaten küçültülmüş olurdu,
+karolama yapmanın hiçbir anlamı kalmazdı ve ölçtüğüm her sayı başka bir sorunun
+cevabı olurdu.
+
+Veri kümesinin bir kopyasını (fork) alıp yeniden boyutlandırma ön işlemesini
+kaldırdım, yön düzeltmeyi (Auto-Orient) bıraktım ve tam çözünürlüklü sürümü yeniden
+dışa aktardım. Ardından varsaymak yerine ölçtüm: `00_veri_incele.py` üç bölümdeki
+1.579 görüntünün tamamının 4000×3000 olduğunu doğruladı — genişlik ve yükseklik için
+en küçük, medyan ve en büyük değerlerin üçü de aynı çıktı.
+
+**Ders:** Veri kümesinin en temel özelliğini bile varsaymamak gerekiyor. Görüntü
+çözünürlüğü bu projede "detay" değil, problemin tanımının kendisi. Dağıtım
+platformları veriyi olduğu gibi vermeyebilir; ne indirdiğini ölçmeden işe başlamak,
+sonraki bütün ölçümleri geçersiz kılma riski taşıyor.
+
 ### 1.11. Kararlar ve gerekçeleri
 
 | Karar | Alternatif | Neden bu |
@@ -448,11 +514,23 @@ dosyası duruyordu ama onu üreten kod hiçbir yerde kayıtlı değildi — yani
 | Yalnızca CPU | GPU kiralamak | Elimdeki donanım. Süre kısıtı ölçüm tasarımını etkiledi (tek tarama + sonradan filtreleme) ama sonuçları etkilemedi. |
 | Güven eşiği 0,05 / 0,15 / 0,30 | Tek eşik | Recall ile yanlış alarm arasındaki değiş tokuşu tek sayı göstermiyor. Üç nokta, eğrinin şeklini görmeye yetiyor. |
 
+*Bu tablo ne söylüyor:* Kararların çoğunu belirleyen iki kısıt var: elimdeki donanım
+(yalnızca CPU) ve hedeflerin küçüklüğü. Karo boyutu, IoU eşiği ve model seçimi
+doğrudan bu iki kısıttan çıkıyor. Hiçbiri "en iyi sonucu almak" için seçilmedi; amaç
+başlangıç noktasını makul bir sürede ve savunulabilir varsayımlarla ölçmekti.
+
 ---
 
 ### 1.12. Sonraki adım
 
-Bu ölçümler Hafta 1'in içeriğini doğrudan belirledi.
+Bu bölümü ikiye ayırıyorum, çünkü iki farklı şeyden söz ediyorlar: ölçüm tarafında
+cevapsız kalan sorular ile sıradaki adımda fiilen kurulacak iş. Bir ölçümün açık
+kalması, sıradaki işin o ölçüm olduğu anlamına gelmiyor.
+
+#### 1.12.1 Ölçüm tarafında açık kalanlar
+
+Bu ölçümler ileriki **model çalışmalarının** içeriğini belirledi. Aşağıdakiler
+cevaplanmayı bekleyen sorular; model üzerinde çalışılan adımlarda ele alınacaklar.
 
 **1. Karo boyutunu optimize etmek (A türü hatalara yönelik).** Hedef boyutu ile recall
 arasındaki ilişki (r = +0,911) net olduğuna göre, karoyu küçültmek hedefi modele daha
@@ -473,7 +551,30 @@ Daha sık eşik örneklemesi bu karşılaştırmayı mümkün kılar.
 eğitimsiz ölçümlerin tamamlanmış olması gerekiyor.
 
 B türü hatalar (BLI, GRO, CAB) karolama parametreleriyle çözülmeyecek. Onlar için
-veri kümesine özgü eğitim gerekiyor — yani Hafta 3'ün asıl gerekçesi bu bulgu.
+veri kümesine özgü eğitim gerekiyor; model eğitimi adımının asıl gerekçesi bu bulgu.
+
+#### 1.12.2 Bir sonraki adım: sistem iskeleti
+
+Sıradaki adımda ölçüm yapılmayacak; sistemin kendisi kurulacak.
+
+Gerekçesi şu: taban çizgisi ölçümü geçildi ve yaklaşımın çalıştığı gösterildi.
+Bundan sonrası tek seferlik script koşuları olarak sürdürülemez. Ölçümün etrafına,
+görüntülerin yüklendiği, işlerin sıraya alındığı ve sonuçların saklandığı bir sistem
+gerekiyor.
+
+Bu adımda kurulacak üç şey var:
+
+1. **Konteynerleştirme.** Çalışma ortamının tekrar üretilebilir biçimde
+   paketlenmesi. Şu anda ortam tek bir makineye bağlı; sürüm sabitlemesi yapılmış
+   olsa da taşınabilir değil.
+2. **Web çerçevesi.** Görüntü yükleme, tespit isteği ve sonuç sorgulama için bir
+   arayüz katmanı.
+3. **Veritabanı şeması.** Görüntülerin, tespitlerin ve koşu bilgilerinin kalıcı
+   olarak saklanacağı yapı. Şu anda bu bilgi CSV dosyalarında duruyor; tek koşu için
+   yeterli ama üst üste binen koşular ve karşılaştırmalar için değil.
+
+Model tarafındaki iyileştirmeler (1.12.1'deki maddeler) bu iskelet kurulduktan sonra
+onun üzerinde yapılacak.
 
 ---
 
@@ -493,8 +594,10 @@ kullanıma ve değiştirmeye izin verir, karşılığında atıf zorunludur.
 
 - Yukarı kaynak (upstream) ayna: `universe.roboflow.com/drone-internship/heridal-human-detection`, sürüm 4
 - Fiilen indirdiğim dışa aktarım: `universe.roboflow.com/onur-kaya/heridal-human-detection-jvf9b`, sürüm 1 — bu, yukarıdaki aynanın kendi Roboflow çalışma alanıma alınmış kopyasıdır. Proje içindeki `data/heridal/data.yaml` bu kaydı taşır.
-- Dışa aktarım biçimi: YOLOv8. Roboflow tarafında görüntülere ön işleme veya veri
-  artırma uygulanmamıştır.
+- Dışa aktarım biçimi: YOLOv8. Ön işleme olarak yalnızca yön düzeltme (Auto-Orient)
+  uygulanmıştır; varsayılan olarak gelen yeniden boyutlandırma (Resize) kaldırılmıştır,
+  böylece görüntüler 4000×3000 özgün çözünürlüğünde kalmıştır. Veri artırma
+  uygulanmamıştır.
 
 Roboflow'un dağıtım künyesi:
 
@@ -507,8 +610,9 @@ Roboflow'un dağıtım künyesi:
   url          = {https://universe.roboflow.com/drone-internship/heridal-human-detection},
   journal      = {Roboflow Universe},
   publisher    = {Roboflow},
-  year         = {2026},
-  note         = {CC BY 4.0}
+  year         = {2023},
+  month        = {oct},
+  note         = {CC BY 4.0. Erisim tarihi: 09.09.2026}
 }
 ```
 
@@ -558,5 +662,34 @@ analizlerin uygulanması ve dokümantasyon işlerinde kullandım.
   parametreler CSV'ye kayıtlı. Tek istisna işlem süresi sütunudur; o makinenin anlık
   yüküne göre değişir.
 
-Kodun tamamı ve çıktıların nasıl üretileceği `README_hafta0.md` içinde adım adım
-yazılıdır.
+Kodun tamamı ve her çıktının hangi komutla üretildiği projenin kurulum belgesinde
+adım adım yazılıdır.
+
+---
+
+### 1.15. Ek — Ölçüm çıktıları
+
+Bu adımda üretilen çıktı dosyaları, içerikleri ve onları üreten scriptler. Rapordaki
+her sayı bu dosyalardan okunmuştur; hiçbiri elle girilmemiştir.
+
+| Dosya | İçerik | Üreten |
+|---|---|---|
+| `veri_istatistik.csv` | Bölüm başına görüntü sayısı, görüntü en/boy min-medyan-maks, toplam kutu, görüntü başına kutu, kutu en/boy piksel değerleri, kutu alanının görüntü alanına oranı | `00_veri_incele.py` |
+| `onek_dagilimi.csv` | Bölüm × kaynak kırılımıyla görüntü sayısı, kutu sayısı, görüntü başına kutu, boş görüntü oranı | `00_veri_incele.py` |
+| `taban_cizgisi.csv` | İlk ölçüm: test bölümünün ilk 100 görüntüsü, güven eşiği başına TP/FN/recall/FP/precision | `01_taban_cizgisi.py` |
+| `taban_cizgisi_tam.csv` | Aynı ölçüm, test bölümünün tamamı (157 görüntü) | `01_taban_cizgisi.py` |
+| `taban_cizgisi_onek.csv` | Ana taban çizgisi tablosu: üç bölüm birleşik (1.579 görüntü), her kaynak × her güven eşiği için bir satır, artı toplam ve baskın kaynak hariç özet satırları | `01_taban_cizgisi.py` |
+| `kutu_bazinda_sonuc.csv` | Her gerçek kutu için ayrı satır: görüntü, bölüm, kaynak, kutu boyutu, güven eşiği, eşleşti mi, eşleşen tahminin skoru ve IoU'su | `01_taban_cizgisi.py` |
+| `karolama_karsilastirma.csv` | Karolamalı ve karolamasız ölçümün aynı görüntüler üzerinde karşılaştırması | `02_karolama_karsilastir.py` |
+| `ornek_secim.csv` | Görselleştirilen örneklerin listesi: tabaka, kaynak, etiket/tahmin/eşleşen/yanlış pozitif sayıları | `03_gorsellestir.py` |
+| `ornekler/` | Örnek görüntüler; gerçek kutular yeşil, tahminler güven skoruyla kırmızı | `03_gorsellestir.py` |
+| `ornekler_BLI/`, `ornekler_GRO/`, `ornekler_CAB/` | Boyut modelinden sapan üç kaynağın örnek görselleri | `03_gorsellestir.py` |
+| `onek_kutu_boyutu.csv` | Kaynak başına medyan kutu genişliği/yüksekliği/alanı/kenarı, üç eşikteki recall ve FP/görüntü | `04_kutu_boyutu_analiz.py` |
+| `recall_vs_kutu_boyutu.png` | Bölüm 1.6'daki dağılım grafiği | `04_kutu_boyutu_analiz.py` |
+| `onek_kontrast.csv` | Kaynak başına medyan yerel kontrast, kutu kenarı, recall ve boyut modelinden artık | `05_kontrast_analiz.py` |
+
+*Bu tablo ne söylüyor:* Rapordaki her sayının izi sürülebilir bir kaynağı var. Her
+CSV, sonucun hangi koşullarda üretildiğini kendi içinde `kosu_` önekli sütunlarda
+taşır: model adı, karo boyutu, örtüşme oranı, eşleştirme eşiği, kütüphane sürümleri,
+tarih ve çalıştırılan komutun tam hali. Böylece tablolar rapordan ayrı olarak da
+kendini açıklar ve ölçüm aynı koşullarda tekrarlanabilir.
