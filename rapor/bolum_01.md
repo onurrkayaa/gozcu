@@ -1,4 +1,6 @@
-# Gözcü — Hafta 0 Raporu
+## 1. Hazırlık ve Taban Çizgisi
+
+*(veri doğrulama, karolama karşılaştırması, taban çizgisi ölçümü, hedef boyutu analizi)*
 
 **Havadan çekilmiş arama-kurtarma görüntülerinde insan tespiti: taban çizgisi ölçümü**
 
@@ -13,7 +15,7 @@ sayının hangi dosyada olduğu `README_hafta0.md` bölüm 6'daki tabloda listel
 
 ---
 
-## 1. Problem
+### 1.1. Problem
 
 Veri kümesindeki görüntüler **4000×3000 piksel**. Aradığımız insanlar ise medyan
 olarak **60×59 piksel** — yani tipik bir insan, görüntünün toplam alanının yalnızca
@@ -29,7 +31,7 @@ olduğu gibi modele vermek, aradığımız şeyi model onu görmeden önce yok e
 
 ---
 
-## 2. Yaklaşım: karolama
+### 1.2. Yaklaşım: karolama
 
 **Karolama** (tiling), büyük bir görüntüyü küçük parçalara bölüp her parçayı ayrı ayrı
 modele vermek demek. Görüntü küçültülmediği için nesneler orijinal boyutlarında kalır.
@@ -53,7 +55,7 @@ sürdü (yalnızca CPU, GPU yok).
 
 ---
 
-## 3. Ne ölçtüm ve neden
+### 1.3. Ne ölçtüm ve neden
 
 Bir tahminin doğru sayılması için gerçek etikete yeterince benzemesi gerekir. Bunu
 **IoU** (Intersection over Union, kesişim/birleşim oranı) ile ölçtüm: iki kutunun
@@ -83,13 +85,13 @@ operatörü boğar. Yani recall'ı FP bütçesiyle birlikte okumak gerekiyor.
 
 ---
 
-## 4. Taban çizgisi sonuçları
+### 1.4. Taban çizgisi sonuçları
 
 Modelin bir tespiti bildirmesi için gereken en düşük güven skoruna **güven eşiği**
 diyorum. Eşik düştükçe model daha çok şey bildirir: recall artar, yanlış alarm da
 artar. Bu yüzden tek bir eşik yerine üçünü birden ölçtüm.
 
-### 4.1 Karolamalı ölçüm — tüm veri kümesi
+#### 1.4.1 Karolamalı ölçüm — tüm veri kümesi
 
 1.579 görüntü, 3.073 etiketlenmiş insan:
 
@@ -105,7 +107,7 @@ makul bir yanlış alarm seviyesinde (görüntü başına 0,89) aranan insanlar�
 görüntü başına 13,5 yanlış alarm oluşuyor — 1.579 görüntüde 21.387 yanlış tespit
 demek. Bu, operatörün elemesi gereken hacim olarak gerçekçi değil.
 
-### 4.2 Karolama gerçekten gerekli mi?
+#### 1.4.2 Karolama gerçekten gerekli mi?
 
 Aynı 100 görüntüyü iki şekilde taradım: karolamalı (512 piksellik karolar) ve
 karolamasız (tüm görüntü doğrudan modele, model 640'a küçültüyor).
@@ -138,7 +140,7 @@ bölümünün ilk 100 görüntüsü üzerinde yapıldı.
 
 ---
 
-## 5. Veri kümesinin yapısı — tek sayı neden yanıltıcı
+### 1.5. Veri kümesinin yapısı — tek sayı neden yanıltıcı
 
 Dosya adları `train_ZRI_3035_...` biçiminde. İkinci parça, görüntünün hangi çekim
 bölgesinden geldiğini gösteriyor. Bunlara **kaynak** diyorum. Veri kümesinde
@@ -180,7 +182,7 @@ sonra yalnızca test bölümü kullanılmalıdır. Bu koşul CSV dosyasına
 
 ---
 
-## 6. Hedef boyutu bulgusu
+### 1.6. Hedef boyutu bulgusu
 
 Kaynak bazında recall'lara baktığımda çok geniş bir aralık gördüm: aynı model, aynı
 ayarlarla, kaynağa göre recall **0,05 ile 0,61 arasında** değişiyordu. Bunun sebebini
@@ -216,14 +218,14 @@ medyan kutu kenarı, dikey eksen recall, nokta büyüklüğü o kaynaktaki kutu 
 
 ---
 
-## 7. Hata taksonomisi: iki farklı hata türü
+### 1.7. Hata taksonomisi: iki farklı hata türü
 
 Kutu boyutu modelinden sapmaya bakarak hataları iki gruba ayırdım. Burada **artık**
 (residual) terimini kullanıyorum: bir kaynağın gerçek recall'ı ile, yalnızca kutu
 boyutuna bakarak tahmin edilen recall'ı arasındaki fark. Artık sıfıra yakınsa o
 kaynağın performansı tamamen boyutuyla açıklanıyor demektir.
 
-### A türü — çözünürlük kaynaklı
+#### A türü — çözünürlük kaynaklı
 
 | Kaynak | Medyan kutu kenarı | Recall (0,30) | Artık |
 |---|---|---|---|
@@ -240,7 +242,7 @@ iyi performans veriyor.
 Bu hata türü **çözünürlük problemi**. Çözümü de oradan geçiyor: daha küçük karo
 boyutu kullanmak, hedefi modele daha büyük göstermek demek.
 
-### B türü — görünüm kaynaklı
+#### B türü — görünüm kaynaklı
 
 | Kaynak | Medyan kutu kenarı | Recall (0,30) | Artık |
 |---|---|---|---|
@@ -261,11 +263,11 @@ iyileştirmek A türü hatalara yarar, B türüne yaramaz.
 
 ---
 
-## 8. Çürütülen hipotezler
+### 1.8. Çürütülen hipotezler
 
 Bu bölümü kısaltmadım, çünkü yanlış çıkan tahminler doğru çıkanlar kadar bilgi verdi.
 
-### 8.1 "VRD zor arazidir" — ÇÜRÜTÜLDÜ
+#### 1.8.1 "VRD zor arazidir" — ÇÜRÜTÜLDÜ
 
 **Ne tahmin ettim:** Test bölümünde iki kaynak vardı: ZRI (şehir parkı) ve VRD
 (dağlık orman). VRD'nin gerçek arama-kurtarma senaryosunu temsil ettiğini ve bu
@@ -278,7 +280,7 @@ yüzden zor olacağını düşündüm.
 öngördüğünden *daha iyi* sonuç veriyor. Tahminim yanlıştı. Zorluk, arazinin ormanlık
 olmasından gelmiyor.
 
-### 8.2 "BRA'nın düşük recall'ı arazi zorluğundan" — ÇÜRÜTÜLDÜ
+#### 1.8.2 "BRA'nın düşük recall'ı arazi zorluğundan" — ÇÜRÜTÜLDÜ
 
 **Ne tahmin ettim:** BRA, BRS, SB ve TRS'nin düşük recall'ının arazi karakterinden
 kaynaklandığını düşündüm.
@@ -287,10 +289,10 @@ kaynaklandığını düşündüm.
 karşılaştırdım (`04_kutu_boyutu_analiz.py`).
 
 **Ne çıktı:** Sebep arazi değil, hedef boyutu. Bu dört kaynak veri kümesindeki en
-küçük dört kutuya sahip ve artık değerleri sıfıra çok yakın (bölüm 7, A türü).
+küçük dört kutuya sahip ve artık değerleri sıfıra çok yakın (bölüm 1.7, A türü).
 Tahminimin yönü yanlıştı ama ölçüm daha basit ve daha güçlü bir açıklama verdi.
 
-### 8.3 "BLI/GRO/CAB'in sapması düşük kontrasttan" — ÇÜRÜTÜLDÜ
+#### 1.8.3 "BLI/GRO/CAB'in sapması düşük kontrasttan" — ÇÜRÜTÜLDÜ
 
 **Ne tahmin ettim:** B türü kaynaklara gözle baktığımda insanların arka plandan zor
 ayırt edildiğini gördüm ve bunu düşük kontrasta bağladım.
@@ -311,7 +313,7 @@ recall'ı zaten boyutuyla açıklanıyor.
 Gözlemim yanlış değildi ama sebebini yanlış adlandırmışım. Görselde gördüğüm şey
 ortalama parlaklık farkı değildi.
 
-### 8.4 "Kaçırılanlar yerde yatan insanlar" — HİPOTEZ, ZRI ile çelişiyor
+#### 1.8.4 "Kaçırılanlar yerde yatan insanlar" — HİPOTEZ, ZRI ile çelişiyor
 
 **Ne tahmin ettim:** BLI görsellerinde bulunan kişilerin ayakta, kaçırılanların
 çimende yatıyor olduğunu fark ettim. COCO veri kümesinin ağırlıklı olarak ayakta ve
@@ -329,7 +331,7 @@ Bu yüzden duruş hipotezini **doğrulanmamış** sayıyorum. Veri kümesinde du
 olmadığı için ölçmek de kolay değil; her kutunun en-boy oranından dolaylı bir gösterge
 türetilebilir ama bunu yapmadım.
 
-### 8.5 İşaretli kontrast — İLGİNÇ AMA KANITLANMAMIŞ
+#### 1.8.5 İşaretli kontrast — İLGİNÇ AMA KANITLANMAMIŞ
 
 Kontrast farkının işaretine (insanın arka plandan koyu mu açık mı olduğuna) baktığımda
 recall ile bir ilişki gördüm: Pearson r = −0,581. İnsanların arka plandan koyu olduğu
@@ -342,7 +344,7 @@ durumda. Bağımsız bir açıklama olarak kullanılamaz.
 
 ---
 
-## 9. Açık kalan soru
+### 1.9. Açık kalan soru
 
 B türü kaynakların (BLI, GRO, CAB) sapması **açıklanamadı**. Kutu boyutu bu üç
 kaynağı açıklamıyor, kontrast da elendi.
@@ -362,9 +364,9 @@ sunulmamalıdır.
 
 ---
 
-## 10. Ölçüm metodolojisi dersleri
+### 1.10. Ölçüm metodolojisi dersleri
 
-### 10.1 Alt küme yanlılığı
+#### 1.10.1 Alt küme yanlılığı
 
 İlk taban çizgisini test bölümünün ilk 100 görüntüsüyle ölçtüm. Sonra tüm bölümle
 (157 görüntü) tekrarladım:
@@ -387,12 +389,12 @@ dağılmıyorsa yanlı bir örneklem yaratır. Alt küme sonucunu kullanmadan ö
 kümenin temel özelliklerini (burada görüntü başına nesne sayısı) bölümün tamamıyla
 karşılaştırmak gerekiyor.
 
-### 10.2 SAHI'nin iki varsayılanı
+#### 1.10.2 SAHI'nin iki varsayılanı
 
 **Birincisi:** `get_sliced_prediction` fonksiyonunda `perform_standard_pred`
 parametresi varsayılan olarak açık. Bu, karolara **ek olarak** tüm görüntüyü de
 küçültüp bir kez daha tarıyor. Açık bıraksaydım "karolamalı" ölçümüm karolamasız
-ölçümü zaten içinde barındıracaktı ve bölüm 4.2'deki karşılaştırma anlamsız olacaktı.
+ölçümü zaten içinde barındıracaktı ve bölüm 1.4.2'deki karşılaştırma anlamsız olacaktı.
 Kapattım.
 
 **İkincisi:** SAHI, güven eşiği düşük olduğunda kutu birleştirme yöntemini
@@ -406,7 +408,7 @@ açıkça sabitledikten sonra doğrulama aynı sonucu verdi.
 Ölçüme giren her parametreyi açıkça yazmak ve CSV'ye kaydetmek gerekiyor. Her çıktı
 dosyam `kosu_` önekli sütunlarda bu ayarları taşıyor.
 
-### 10.3 Ara sonuçları saklamamanın maliyeti
+#### 1.10.3 Ara sonuçları saklamamanın maliyeti
 
 Kaynak bazında tam ölçüm **2 saat 42 dakika** sürdü. Koşu bittikten sonra kaçırılan
 kutuların boyut dağılımına bakmak istedim ve veriyi bulamadım: toplu metrikler *kaç*
@@ -422,7 +424,7 @@ varsayılan davranış — çünkü veriyi atmanın maliyeti saatlerle ölçül�
 **Ders:** Pahalı bir hesabın ara sonuçlarını saklamak neredeyse bedava; saklamamak
 ise sonradan akla gelen her soruyu hesabın kendisi kadar pahalı hale getiriyor.
 
-### 10.4 Tekrar üretilemeyen çıktı
+#### 1.10.4 Tekrar üretilemeyen çıktı
 
 Kaynak dağılımı tablosunu ilk kez tek seferlik geçici bir betikle üretmiştim. Çıktı
 dosyası duruyordu ama onu üreten kod hiçbir yerde kayıtlı değildi — yani tablo tekrar
@@ -433,7 +435,7 @@ dosyası duruyordu ama onu üreten kod hiçbir yerde kayıtlı değildi — yani
 
 ---
 
-## 11. Kararlar ve gerekçeleri
+### 1.11. Kararlar ve gerekçeleri
 
 | Karar | Alternatif | Neden bu |
 |---|---|---|
@@ -448,7 +450,7 @@ dosyası duruyordu ama onu üreten kod hiçbir yerde kayıtlı değildi — yani
 
 ---
 
-## 12. Sonraki adım
+### 1.12. Sonraki adım
 
 Bu ölçümler Hafta 1'in içeriğini doğrudan belirledi.
 
@@ -458,7 +460,7 @@ büyük gösterir. 512'nin yanı sıra 320 ve 256 piksellik karolar denenmeli. B
 sonuç: BRA, BRS, SB, TRS gibi küçük hedefli kaynaklarda recall artışı. Bedeli karo
 sayısının ve dolayısıyla sürenin artması; bu değiş tokuş ölçülmeli.
 
-**2. Doku karmaşıklığını ölçmek (bölüm 9'daki açık soru).** Kutu çevresindeki yerel
+**2. Doku karmaşıklığını ölçmek (bölüm 1.9'daki açık soru).** Kutu çevresindeki yerel
 varyans ve kenar yoğunluğu hesaplanıp B türü kaynakların artığıyla karşılaştırılmalı.
 İlişki çıkarsa hata taksonomisi tamamlanmış olur; çıkmazsa başka aday aranmalı.
 
@@ -466,7 +468,7 @@ varyans ve kenar yoğunluğu hesaplanıp B türü kaynakların artığıyla kar�
 karolamasız yöntemleri eşit yanlış alarm bütçesinde karşılaştıramamamın sebebi bu.
 Daha sık eşik örneklemesi bu karşılaştırmayı mümkün kılar.
 
-**4. Eğitim öncesi son ölçüm.** Hafta 3'te eğitime geçilecekse, bölüm 5'teki birleşik
+**4. Eğitim öncesi son ölçüm.** Hafta 3'te eğitime geçilecekse, bölüm 1.5'teki birleşik
 ölçüm o noktadan sonra geçersiz hale gelir. Eğitim başlamadan önce yapılacak tüm
 eğitimsiz ölçümlerin tamamlanmış olması gerekiyor.
 
@@ -475,23 +477,50 @@ veri kümesine özgü eğitim gerekiyor — yani Hafta 3'ün asıl gerekçesi bu
 
 ---
 
-## 13. Veri ve lisanslar
+### 1.13. Veri ve lisanslar
 
-**Veri kümesi:** HERIDAL insan tespit veri kümesi, Roboflow Universe üzerinden
-YOLOv8 formatında dışa aktarılmış sürüm.
+**Orijinal veri kümesi.** HERIDAL, arama-kurtarma amaçlı havadan insan tespiti
+için hazırlanmış bir veri kümesidir. Akademik künyesi:
 
-- Kaynak: `https://universe.roboflow.com/onur-kaya/heridal-human-detection-jvf9b/dataset/1`
-- Lisans: **CC BY 4.0** (Creative Commons Atıf 4.0). Bu lisans kullanım ve
-  değiştirmeye izin verir, atıf zorunludur.
-- İçerik: 1.579 görüntü, tek sınıf, 3.073 etiketli kutu. Roboflow dışa aktarımında
-  görüntülere ön işleme veya veri artırma uygulanmamış; görüntüler 4000×3000
-  orijinal çözünürlüğünde.
+> Božić-Štulić, D., Marušić, Ž., & Gotovac, S. (2019). Deep Learning Approach in
+> Aerial Imagery for Supporting Land Search and Rescue Missions. *International
+> Journal of Computer Vision*, 127(9), 1256–1278.
+> https://doi.org/10.1007/s11263-019-01177-1
+
+**Kullanılan dağıtım.** Orijinal kümeyi resmî kaynağından almadım; Roboflow Universe
+üzerindeki bir aynasını (mirror) kullandım. Ayna CC BY 4.0 lisanslıdır — bu lisans
+kullanıma ve değiştirmeye izin verir, karşılığında atıf zorunludur.
+
+- Yukarı kaynak (upstream) ayna: `universe.roboflow.com/drone-internship/heridal-human-detection`, sürüm 4
+- Fiilen indirdiğim dışa aktarım: `universe.roboflow.com/onur-kaya/heridal-human-detection-jvf9b`, sürüm 1 — bu, yukarıdaki aynanın kendi Roboflow çalışma alanıma alınmış kopyasıdır. Proje içindeki `data/heridal/data.yaml` bu kaydı taşır.
+- Dışa aktarım biçimi: YOLOv8. Roboflow tarafında görüntülere ön işleme veya veri
+  artırma uygulanmamıştır.
+
+Roboflow'un dağıtım künyesi:
+
+```bibtex
+@misc{heridal-human-detection_dataset,
+  title        = {Heridal Human Detection Dataset},
+  type         = {Open Source Dataset},
+  author       = {Drone Internship},
+  howpublished = {\url{https://universe.roboflow.com/drone-internship/heridal-human-detection}},
+  url          = {https://universe.roboflow.com/drone-internship/heridal-human-detection},
+  journal      = {Roboflow Universe},
+  publisher    = {Roboflow},
+  year         = {2026},
+  note         = {CC BY 4.0}
+}
+```
+
+**Doğrulama.** Ayna kullandığım için, indirilen görüntülerin orijinal çözünürlükte
+olup olmadığını varsaymak yerine ölçtüm. `00_veri_incele.py`, üç bölümdeki 1.579
+görüntünün tamamının **4000×3000 piksel** olduğunu doğruladı (genişlik ve yükseklik
+için en küçük, medyan ve en büyük değerler aynı çıktı). Roboflow aynaları bazen
+görüntüleri yeniden boyutlandırır; öyle olsaydı bu projenin tüm karolama gerekçesi
+geçersiz kalırdı.
+
+- İçerik: 1.579 görüntü, tek sınıf, 3.073 etiketli kutu.
 - Veri kümesindeki sınıf adı `human`, kullandığım COCO modelindeki karşılığı `person`.
-
-> **Kontrol edilmesi gereken:** HERIDAL veri kümesinin orijinal akademik yayını
-> vardır ve tez metninde ona atıf verilmesi uygun olur. Roboflow dışa aktarımı bu
-> künyeyi içermediği için buraya yazmadım — uydurmamak adına boş bıraktım. Orijinal
-> yayın künyesini teyit edip bu bölüme eklemek gerekiyor.
 
 **Model:** `yolo11n.pt`, Ultralytics tarafından COCO veri kümesiyle önceden
 eğitilmiş ağırlıklar. Ultralytics **AGPL-3.0** lisanslıdır. Bu lisans, yazılımın ağ
@@ -505,7 +534,7 @@ dönüştürülecekse lisans koşulları yeniden değerlendirilmelidir.
 
 ---
 
-## 14. Araçlar ve yöntem
+### 1.14. Araçlar ve yöntem
 
 Bu çalışmanın kodunu yazarken yapay zeka destekli bir geliştirme asistanı kullandım.
 
@@ -524,7 +553,7 @@ analizlerin uygulanması ve dokümantasyon işlerinde kullandım.
 - Kaynak bazlı özet satırlarının doğruluğu, sonucu elle hesaplanabilen yapay veriyle
   test edildi.
 - Tek tarama + sonradan filtreleme optimizasyonu, doğrudan tarama ile karşılaştırılarak
-  doğrulandı (bölüm 10.2).
+  doğrulandı (bölüm 1.10.2).
 - Bütün ölçümler tekrar üretilebilir: görüntü listesi sıralı, çıkarım deterministik,
   parametreler CSV'ye kayıtlı. Tek istisna işlem süresi sütunudur; o makinenin anlık
   yüküne göre değişir.

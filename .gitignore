@@ -10,6 +10,10 @@ reports/
 # Model ağırlıkları - ilk çalıştırmada otomatik iner
 *.pt
 
+# Uretilen rapor ciktilari - kaynak bolum_*.md dosyalari depoda durur
+rapor/rapor.md
+rapor/rapor.pdf
+
 # Python
 __pycache__/
 *.py[cod]
