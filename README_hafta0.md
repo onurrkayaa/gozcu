@@ -95,7 +95,9 @@ Kullanılabilir argümanlar:
 
 | Argüman | Varsayılan | Açıklama |
 |---|---|---|
-| `--bolum` | `test` | Ölçülecek bölüm (train/valid/test) |
+| `--bolum` | `test` | Ölçülecek bölüm (train/valid/test), ya da `hepsi` |
+| `--onek` | yok | Sadece bu kaynak öneklerini ölç (ör. `VRD MED`); verilmezse hepsi |
+| `--onek-bazinda` | kapalı | Çıktıyı kaynak bazında üretir (bkz. 5.5) |
 | `--limit` | `100` | En fazla kaç görüntü işlensin (0 = hepsi) |
 | `--karo` | `512` | Karo kenar uzunluğu, piksel |
 | `--ortusme` | `0.2` | Karolar arası örtüşme oranı |
@@ -119,10 +121,27 @@ Aynı görüntüleri iki modda ölçüp tek tabloda karşılaştırır (~11 daki
 (güven skoruyla birlikte) çizer.
 
 ```bash
-.venv/bin/python scripts/03_gorsellestir.py --bolum test --adet 10
+.venv/bin/python scripts/03_gorsellestir.py --bolum test
 ```
 
-Çıktı: `reports/ornekler/` klasörü.
+Çıktı: `reports/ornekler/` klasörü ve `reports/ornek_secim.csv`.
+
+Örnekler rastgele ya da baştan sırayla değil, **tabakalı** seçilir:
+
+| Tabaka | Adet | Ölçüt |
+|---|---|---|
+| `kalabalik` | 4 | En çok etiketi olan sahneler |
+| `az_etiketli` | 4 | 1-2 kutulu seyrek sahneler |
+| `negatif` | 2 | Hiç etiketi olmayan sahneler |
+
+Negatif görüntüler **kasten** dahil edilir: modelin boş arazide ürettiği yanlış
+pozitifler ancak böyle gözle görülebilir. Ölçümde görüntü başına 1.39 FP (conf=0.30)
+çıkıyor; bunun neye benzediğini görmek, sayıyı okumaktan daha bilgilendiricidir.
+
+Tabaka adetleri script'in başındaki `KALABALIK_ADET`, `AZ_ADET`, `NEGATIF_ADET`
+sabitlerinde tanımlıdır. Seçilen görüntülerin listesi etiket sayılarıyla birlikte
+`reports/ornek_secim.csv` dosyasına yazılır; böylece hangi görüntülere bakıldığı
+kayda geçer ve seçim tekrar üretilebilir.
 
 ---
 
@@ -173,7 +192,41 @@ işlenir.
 Arama-kurtarma bağlamında **recall, precision'dan önemlidir**: kaçırılan bir insan
 geri alınamaz, yanlış alarmı ise operatör eler.
 
-### 5.4 Tekrarlanabilirlik
+### 5.4 Kaynak (önek) bazında ölçüm
+
+Veri kümesindeki dosya adları `train_ZRI_3035_...` biçimindedir; ikinci parça
+görüntünün hangi çekim bölgesinden geldiğini söyler. Toplam **17 farklı kaynak**
+vardır ve dağılımları çok dengesizdir — `reports/onek_dagilimi.csv` bunu belgeler.
+
+En önemli sapma: **ZRI** (şehir parkı) 126 görüntüde 1297 kutu taşır, yani veri
+kümesindeki etiketlerin %42'si. Diğer 16 kaynak dağlık/ormanlık arazidir ve görüntü
+başına ortalama 1'in altında etiket içerir. Dahası bölünmeler kaynak bazında
+ayrışmıştır: `test` bölümü 17 kaynaktan yalnızca 2'sini (ZRI ve VRD) içerir ve
+ZRI'nin 126 görüntüsünün 87'si oradadır.
+
+Bu yüzden tek bir birleşik recall sayısı yanıltıcıdır — pratikte "ZRI parkında
+recall" anlamına gelir. `--onek-bazinda` bayrağı her kaynak için ayrı satır üretir,
+ayrıca iki özet satırı ekler:
+
+- `TOPLAM` — tüm kaynaklar birlikte
+- `ZRI_HARIC` — baskın kaynak dışarıda bırakıldığında kalan tablo
+
+Kaynak bazında tam ölçüm (üç bölüm birleşik, 1579 görüntü, ~2.5 saat):
+
+```bash
+.venv/bin/python scripts/01_taban_cizgisi.py \
+    --bolum hepsi --limit 0 --onek-bazinda \
+    --cikti reports/taban_cizgisi_onek.csv
+```
+
+**Bölümleri birleştirmek neden şu an geçerli:** `--bolum hepsi`, train/valid/test
+ayrımını yok sayar. Bu normalde ciddi bir hata olurdu; ancak bu aşamada model
+eğitilmemiştir ve COCO ağırlıklarıyla çalışır — yani üç bölümdeki hiçbir görüntüyü
+görmemiştir. Ölçüm bu nedenle geçerlidir ve CSV'nin `kosu_gecerlilik_notu` sütununda
+bu koşul açıkça yazılıdır. **Hafta 3'te eğitim yapıldıktan sonra bu koşu
+tekrarlanamaz**; o noktadan itibaren yalnızca `test` bölümü kullanılmalıdır.
+
+### 5.5 Tekrarlanabilirlik
 
 Aynı komut ikinci kez çalıştırıldığında tespit sayıları birebir aynıdır: görüntü
 listesi ada göre sıralanır, çıkarım deterministiktir, eşleştirmede skor eşitliği
@@ -210,6 +263,9 @@ gozcu/
     ├── veri_istatistik.csv
     ├── taban_cizgisi.csv
     ├── karolama_karsilastirma.csv
+    ├── ornek_secim.csv
+    ├── onek_dagilimi.csv
+    ├── taban_cizgisi_onek.csv
     └── ornekler/
 ```
 
