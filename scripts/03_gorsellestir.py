@@ -56,6 +56,13 @@ def argumanlari_coz() -> argparse.Namespace:
     )
     ayrastirici.add_argument("--veri", type=Path, default=VERI_KOK, help="Veri kumesi kok klasoru")
     ayrastirici.add_argument("--bolum", default="test", help="Ornek alinacak bolum")
+    ayrastirici.add_argument(
+        "--onek", nargs="+", default=None,
+        help=(
+            "Sadece bu kaynak oneklerinden ornek secilsin (or. BLI GRO CAB). "
+            "Onek, dosya adinin ikinci parcasidir. Verilmezse tum onekler."
+        ),
+    )
     ayrastirici.add_argument("--karo", type=int, default=512, help="Karo kenar uzunlugu, piksel")
     ayrastirici.add_argument("--ortusme", type=float, default=0.2, help="Karolar arasi ortusme orani")
     ayrastirici.add_argument("--conf", type=float, default=0.15, help="Bu esigin altindaki tahminler cizilmez")
@@ -68,6 +75,12 @@ def argumanlari_coz() -> argparse.Namespace:
         help="Secilen goruntulerin listesinin yazilacagi CSV",
     )
     return ayrastirici.parse_args()
+
+
+def onek_cikar(goruntu: Path) -> str:
+    """Dosya adindan kaynak onegini cikarir: train_BLI_0012_... -> BLI"""
+    parcalar = goruntu.stem.split("_")
+    return parcalar[1] if len(parcalar) > 1 else "?"
 
 
 def etiket_sayilarini_topla(goruntuler: list[Path], etiket_dizin: Path) -> dict[Path, int]:
@@ -215,10 +228,18 @@ def main() -> None:
 
     goruntu_dizin, etiket_dizin = bolum_yolu(arg.bolum, arg.veri)
     goruntuler = goruntuleri_listele(goruntu_dizin)
+    if arg.onek:
+        secilen = {o.upper() for o in arg.onek}
+        goruntuler = [y for y in goruntuler if onek_cikar(y).upper() in secilen]
     if not goruntuler:
-        raise SystemExit(f"'{arg.bolum}' bolumunde goruntu bulunamadi.")
+        raise SystemExit(
+            f"'{arg.bolum}' bolumunde "
+            f"{('onek filtresi ' + ','.join(arg.onek) + ' ile ') if arg.onek else ''}"
+            "goruntu bulunamadi."
+        )
 
-    print(f"Bolum: {arg.bolum} | Havuz: {len(goruntuler)} goruntu | conf >= {arg.conf}")
+    print(f"Bolum: {arg.bolum} | Onek: {','.join(arg.onek) if arg.onek else 'hepsi'} | "
+          f"Havuz: {len(goruntuler)} goruntu | conf >= {arg.conf}")
     print(f"Tabakalar: {KALABALIK_ADET} kalabalik + {AZ_ADET} az etiketli "
           f"({AZ_ALT_SINIR}-{AZ_UST_SINIR} kutu) + {NEGATIF_ADET} negatif\n")
 
@@ -247,6 +268,7 @@ def main() -> None:
         satirlar.append({
             "sira": sira,
             "grup": grup,
+            "kaynak_onek": onek_cikar(yol),
             "goruntu": yol.name,
             "etiket_sayisi": etiket_sayisi,
             "tahmin_sayisi": len(tahminler),
@@ -258,6 +280,7 @@ def main() -> None:
     kosu = kosu_bilgisi(
         model=arg.model,
         bolum=arg.bolum,
+        onek_filtresi=",".join(arg.onek) if arg.onek else "hepsi",
         havuz_goruntu_sayisi=len(goruntuler),
         kalabalik_adet=KALABALIK_ADET,
         az_etiketli_adet=AZ_ADET,
@@ -272,8 +295,8 @@ def main() -> None:
     hedef_csv = csv_yaz(arg.secim_csv, satirlar, kosu)
 
     print("\n=== SECILEN ORNEKLER ===")
-    tablo_bas(satirlar, ["sira", "grup", "etiket_sayisi", "tahmin_sayisi",
-                         "eslesen", "yanlis_pozitif", "goruntu"])
+    tablo_bas(satirlar, ["sira", "grup", "kaynak_onek", "etiket_sayisi",
+                         "tahmin_sayisi", "eslesen", "yanlis_pozitif", "goruntu"])
     print(f"\nGoruntuler: {arg.cikti}")
     print(f"Secim listesi: {hedef_csv}")
 

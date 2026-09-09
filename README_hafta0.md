@@ -226,7 +226,30 @@ görmemiştir. Ölçüm bu nedenle geçerlidir ve CSV'nin `kosu_gecerlilik_notu`
 bu koşul açıkça yazılıdır. **Hafta 3'te eğitim yapıldıktan sonra bu koşu
 tekrarlanamaz**; o noktadan itibaren yalnızca `test` bölümü kullanılmalıdır.
 
-### 5.5 Tekrarlanabilirlik
+### 5.5 Kutu bazında kayıt — neden gerekli
+
+`01_taban_cizgisi.py` her koşuda `reports/kutu_bazinda_sonuc.csv` üretir. Bu dosyada
+**her gerçek etiket kutusu için ayrı satır** vardır: görüntü, bölüm, kaynak öneki,
+kutunun piksel boyutları, güven eşiği, eşleşip eşleşmediği, eşleştiyse eşleşen
+tahminin skoru ve IoU değeri.
+
+**Neden bu gerekli:** toplu metrikler yalnızca *kaç* kutunun kaçırıldığını söyler,
+*hangi* kutunun kaçırıldığını söylemez. Bu ayrım pahalıya mal olur. Kaynak bazında
+tam koşu bu veri kümesinde **2 saat 42 dakika** sürüyor; koşu bittiğinde tahminler
+bellekten silinirse, sonradan akla gelen her soru — "kaçırılan kutular küçük olanlar
+mı?", "eşleşenlerin skor dağılımı nasıl?", "belirli bir kaynakta hangi kutular
+kaçtı?" — aynı 2.5 saatlik taramanın baştan yapılmasını gerektirir.
+
+Bu tam olarak bir kez başımıza geldi: kaynak bazında koşu tamamlandıktan sonra kutu
+boyutu / recall ilişkisini kutu düzeyinde incelemek gerekti, ancak kayıt tutulmadığı
+için yalnızca kaynak düzeyinde medyanlarla çalışılabildi. Dosya bu yüzden bir
+bayrağın arkasında değil, **varsayılan olarak her koşuda** üretilir; yolu
+`--kutu-cikti` ile değiştirilebilir.
+
+Satır sayısı `gerçek kutu sayısı × güven eşiği sayısı` kadardır (tam veri kümesinde
+3073 × 3 = 9219). Dosya `reports/` altında olduğu için depoya girmez.
+
+### 5.6 Tekrarlanabilirlik
 
 Aynı komut ikinci kez çalıştırıldığında tespit sayıları birebir aynıdır: görüntü
 listesi ada göre sıralanır, çıkarım deterministiktir, eşleştirmede skor eşitliği
@@ -266,6 +289,9 @@ gozcu/
     ├── ornek_secim.csv
     ├── onek_dagilimi.csv
     ├── taban_cizgisi_onek.csv
+    ├── kutu_bazinda_sonuc.csv
+    ├── onek_kutu_boyutu.csv
+    ├── recall_vs_kutu_boyutu.png
     └── ornekler/
 ```
 

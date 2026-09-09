@@ -5,6 +5,7 @@ calistirip taban cizgisi basarimini olcer. Model egitimi yapilmaz; sadece
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 import time
 from pathlib import Path
@@ -25,6 +26,7 @@ from ortak import (
     goruntuleri_listele,
     karolamali_tara,
     kosu_bilgisi,
+    kutulari_eslestir,
     model_kur,
     sayi_bicimle,
     tablo_bas,
@@ -85,6 +87,13 @@ def argumanlari_coz() -> argparse.Namespace:
     ayrastirici.add_argument("--iou", type=float, default=0.3, help="Eslestirme icin IoU esigi")
     ayrastirici.add_argument("--model", default=VARSAYILAN_MODEL, help="Ultralytics model dosyasi")
     ayrastirici.add_argument("--cikti", type=Path, default=RAPOR_KOK / "taban_cizgisi.csv", help="Sonuc CSV dosyasinin yolu")
+    ayrastirici.add_argument(
+        "--kutu-cikti", type=Path, default=RAPOR_KOK / "kutu_bazinda_sonuc.csv",
+        help=(
+            "Her gercek kutunun eslesme sonucunun yazilacagi CSV. Toplu metrikler "
+            "hangi kutunun neden kacirildigini saklamaz; bu dosya onu korur."
+        ),
+    )
     ayrastirici.add_argument(
         "--dogrula", action="store_true",
         help=(
@@ -199,6 +208,49 @@ def optimizasyonu_dogrula(
             if imza:
                 print(f"         {ad}: {len(imza)} kutu, ornek: {sorted(imza)[0]}")
     return ayni
+
+
+def kutu_bazinda_satirlar(
+    gercekler: dict[Path, list[Kutu]],
+    tahminler: dict[Path, list[Kutu]],
+    ciftler: list[tuple[Path, Path]],
+    conf_listesi: list[float],
+    iou_esigi: float,
+) -> list[dict]:
+    """Her gercek kutu icin, her guven esiginde eslesip eslesmedigini tek tek
+    kaydeder. Toplu metrikler yalnizca kac kutunun kacirildigini soyler; bu kayit
+    HANGI kutunun kacirildigini ve o kutunun boyutunu da sakladigi icin, kosu
+    tekrarlanmadan boyut/kaynak kirilimli analiz yapilabilmesini saglar."""
+    bolum_haritasi = {yol: etiket_dizin.parent.name for yol, etiket_dizin in ciftler}
+    satirlar: list[dict] = []
+
+    for yol, gercek_kutular in gercekler.items():
+        onek = onek_cikar(yol)
+        bolum = bolum_haritasi.get(yol, "")
+        for conf in conf_listesi:
+            secilen = [k for k in tahminler.get(yol, []) if k.skor >= conf]
+            eslesmeler, _, _ = kutulari_eslestir(gercek_kutular, secilen, iou_esigi)
+            # gercek kutu indeksi -> (eslesen tahminin skoru, eslesme IoU'su)
+            eslesme_haritasi = {
+                g_idx: (secilen[t_idx].skor, iou) for g_idx, t_idx, iou in eslesmeler
+            }
+            for sira, kutu in enumerate(gercek_kutular):
+                skor, iou_degeri = eslesme_haritasi.get(sira, (None, None))
+                satirlar.append({
+                    "goruntu": yol.name,
+                    "bolum": bolum,
+                    "kaynak_onek": onek,
+                    "kutu_no": sira,
+                    "kutu_genislik_px": sayi_bicimle(kutu.genislik, 1),
+                    "kutu_yukseklik_px": sayi_bicimle(kutu.yukseklik, 1),
+                    "kutu_alan_px2": sayi_bicimle(kutu.alan, 1),
+                    "kutu_kenar_px": sayi_bicimle(math.sqrt(kutu.alan), 1),
+                    "conf_esigi": conf,
+                    "eslesti": int(skor is not None),
+                    "eslesen_skor": sayi_bicimle(skor, 4) if skor is not None else "",
+                    "eslesen_iou": sayi_bicimle(iou_degeri, 4) if iou_degeri is not None else "",
+                })
+    return satirlar
 
 
 def metrik_satiri(
@@ -347,10 +399,19 @@ def main() -> None:
     )
     hedef = csv_yaz(arg.cikti, satirlar, kosu)
 
+    # Kutu bazinda kayit her kosuda uretilir. Tarama pahali oldugu icin (bu veri
+    # kumesinde ~2.5 saat) sonuclarin ayrintisini atmak, ayni taramayi bastan
+    # yapmak anlamina gelir; bu dosya bunu onler.
+    kutu_satirlari = kutu_bazinda_satirlar(
+        gercekler, tahminler, ciftler, conf_listesi, arg.iou
+    )
+    hedef_kutu = csv_yaz(arg.kutu_cikti, kutu_satirlari, kosu)
+
     print("\n=== TABAN CIZGISI (karolamali, SAHI) ===")
     tablo_bas(satirlar, [k for k in satirlar[0]])
     print(f"\nToplam tarama suresi: {toplam_sure/60:.1f} dk")
-    print(f"CSV kaydedildi: {hedef}")
+    print(f"CSV kaydedildi        : {hedef}")
+    print(f"Kutu bazinda kayit    : {hedef_kutu}  ({len(kutu_satirlari)} satir)")
 
 
 if __name__ == "__main__":
