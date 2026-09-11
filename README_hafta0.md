@@ -288,6 +288,12 @@ Tümü `reports/` altındadır ve depoya girmez; her biri ilgili komut yeniden
 | `onek_kutu_boyutu.csv` | Kaynak başına medyan kutu genişliği/yüksekliği/alanı/kenarı, üç eşikteki recall ve FP/görüntü | `04_kutu_boyutu_analiz.py` |
 | `recall_vs_kutu_boyutu.png` | Dağılım grafiği: x = medyan kutu kenarı, y = recall (conf=0.30), nokta alanı = kutu sayısı, eğilim çizgisiyle | `04_kutu_boyutu_analiz.py` |
 | `onek_kontrast.csv` | Kaynak başına medyan yerel kontrast (kutu içi ile çevre halkası arasındaki parlaklık farkı), kutu kenarı, recall ve boyut modelinden artık | `05_kontrast_analiz.py` |
+| `eslesme_skor_dagilimi.csv` | Eşleşen kutuların güven skoru dağılımı (conf=0.05), dört bantta: 0,05-0,15 / 0,15-0,30 / 0,30-0,50 / 0,50-1,00. B türü kaynaklar (BLI+GRO+CAB) ve en az 100 kutusu olan diğer kaynaklar ayrı gruplanır | `07_gozlem_analiz.py` |
+| `enboy_orani_recall.csv` | Kutu en-boy oranı (genişlik/yükseklik) grubu başına conf=0,30 recall'ı: yatay (>1,5), kare benzeri (0,8-1,5), dikey (<0,8). Hem tüm kaynaklar hem ZRI hariç kapsamıyla | `07_gozlem_analiz.py` |
+| `oran_boyut_tabakali.csv` | Tabakalı kontrol: kutular alana göre üç tabakaya (verinin kendi üçlü çeyrekleri) bölünüp her tabakanın içinde oran grubu başına conf=0,30 recall'ı, kutu/TP sayısı ve medyan alan/genişlik/yükseklik. Oran etkisini boyuttan ayırmak için | `08_oran_boyut_kontrol.py` |
+| `olcu_karsilastirma.csv` | Genişlik, yükseklik ve alan ölçülerinin her biri için beşli çeyrek başına conf=0,30 recall'ı, grup sınırları ve ölçünün `eslesti` ile nokta-çift korelasyonu | `08_oran_boyut_kontrol.py` |
+| `oran_yukseklik_tabakali.csv` | Aynı tabakalı kontrol, bu kez alan yerine **kutu yüksekliği** sabitlenerek: yükseklik üçlü çeyreklerinin içinde oran grubu başına conf=0,30 recall'ı, kutu/TP sayısı, medyan yükseklik ve genişlik | `09_yukseklik_kontrol.py` |
+| `olcu_karsilastirma_genis.csv` | Genişletilmiş ölçü karşılaştırması: min kenar, maks kenar ve yükseklik/genişlik oranı için beşli çeyrek recall eğrisi ve nokta-çift korelasyon; genişlik, yükseklik ve alan da aynı tabloda tekrar | `09_yukseklik_kontrol.py` |
 | `01_onek_kosu.log`, `01_tam_kosu.log`, `03_tabakali.log`, `03_anomali.log` | Uzun koşuların ekran çıktısı ve ilerleme kayıtları | ilgili script |
 
 Her CSV, sonucun hangi koşullarda üretildiğini `kosu_` önekli sütunlarda taşır
@@ -319,22 +325,33 @@ gozcu/
 │   ├── 02_karolama_karsilastir.py
 │   ├── 03_gorsellestir.py
 │   ├── 04_kutu_boyutu_analiz.py
-│   └── 05_kontrast_analiz.py
+│   ├── 05_kontrast_analiz.py
+│   ├── 06_rapor_uret.py             # bolum_*.md dosyalarından rapor.md / rapor.pdf
+│   ├── 07_gozlem_analiz.py          # kutu bazında kayıttan iki gözlem; tarama yapmaz
+│   ├── 08_oran_boyut_kontrol.py     # alan tabakalı oran kontrolü, ölçü karşılaştırması
+│   └── 09_yukseklik_kontrol.py      # yükseklik tabakalı oran kontrolü, genişletilmiş ölçüler
 ├── tests/
 │   └── test_eslestirme.py           # IoU ve eşleştirme testleri
-└── reports/                         # tüm çıktılar buraya yazılır
-    ├── veri_istatistik.csv
-    ├── taban_cizgisi.csv
-    ├── karolama_karsilastirma.csv
-    ├── ornek_secim.csv
-    ├── onek_dagilimi.csv
-    ├── taban_cizgisi_onek.csv
-    ├── kutu_bazinda_sonuc.csv
-    ├── onek_kutu_boyutu.csv
-    ├── onek_kontrast.csv
-    ├── recall_vs_kutu_boyutu.png
-    ├── ornekler/
-    └── ornekler_BLI/  ornekler_GRO/  ornekler_CAB/
+├── reports/                         # tüm çıktılar buraya yazılır
+│   ├── veri_istatistik.csv
+│   ├── taban_cizgisi.csv
+│   ├── karolama_karsilastirma.csv
+│   ├── ornek_secim.csv
+│   ├── onek_dagilimi.csv
+│   ├── taban_cizgisi_onek.csv
+│   ├── kutu_bazinda_sonuc.csv
+│   ├── onek_kutu_boyutu.csv
+│   ├── onek_kontrast.csv
+│   ├── eslesme_skor_dagilimi.csv
+│   ├── enboy_orani_recall.csv
+│   ├── oran_boyut_tabakali.csv
+│   ├── olcu_karsilastirma.csv
+│   ├── oran_yukseklik_tabakali.csv
+│   ├── olcu_karsilastirma_genis.csv
+│   ├── recall_vs_kutu_boyutu.png
+│   ├── ornekler/
+│   └── ornekler_BLI/  ornekler_GRO/  ornekler_CAB/
+└── reports_yedek_20260909/          # 09-09 koşusunun yedeği; depoya girmez
 ```
 
 `scripts/ortak.py` bütün scriptlerin paylaştığı ortak mantığı barındırır: IoU,

@@ -28,3 +28,6 @@ __pycache__/
 # Yuklenen goruntuler
 backend/media/*
 !backend/media/.gitkeep
+
+# Pahali kosularin yedegi - depoya girmez, yerelde kalir
+reports_yedek_*/
