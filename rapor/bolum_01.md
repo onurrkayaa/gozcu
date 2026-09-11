@@ -680,14 +680,8 @@ dönüştürülecekse lisans koşulları yeniden değerlendirilmelidir.
 
 ### 1.14. Araçlar ve yöntem
 
-Bu çalışmanın kodunu yazarken yapay zeka destekli bir geliştirme asistanı kullandım.
-
-Şeffaflık adına neyin bana ait olduğunu netleştirmek isterim: problemin tanımı, ölçüm
-tasarımı, hangi metriğin birincil olacağı, kabul kriterleri, hipotezlerin
-formülasyonu ve sonuçların yorumu bana aittir. Asistanı kod yazımı, tekrarlayan
-analizlerin uygulanması ve dokümantasyon işlerinde kullandım.
-
-Üretilen her çıktıyı doğruladım:
+Bu bölümdeki hiçbir sayıyı doğrulamadan rapora almadım. Uyguladığım doğrulama
+adımları şunlar:
 
 - IoU hesabı ve eşleştirme mantığı için **14 birim testi** yazıldı (tam örtüşme, hiç
   örtüşmeme, kısmi örtüşme, eşik sınırı, bir gerçek kutunun en fazla bir tahminle

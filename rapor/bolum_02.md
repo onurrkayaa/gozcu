@@ -709,3 +709,96 @@ tablolar model çalıştırılmadan, saniyeler içinde türetildi. Tabaka ve çe
 sabit sayılar değil; her biri ilgili kapsamın kendi dağılımından hesaplanıp çıktı
 dosyasına yazıldı, böylece bir başkası aynı bölmeyi tekrar kurabilir. Her CSV, sonucun
 hangi koşullarda üretildiğini `kosu_` önekli sütunlarda taşır.
+
+---
+
+### 2.8. Sonraki adım
+
+Bu bölümü ikiye ayırıyorum, ama bölüm 1'dekinden farklı bir eksende. Orada ayrım
+"açık kalan ölçümler" ile "fiilen kurulacak iş" arasındaydı. Burada ayrım
+**gerekçenin nereden geldiği** üzerine: bazı adımların dayanağı bu bölümde ölçüldü,
+bazılarının dayanağı ise henüz ölçülmedi. İkisini aynı listede tutmak, ölçülmüş bir
+gerekçeyle ölçülmemiş bir sezgiyi eşit ağırlıkta göstermek olurdu.
+
+Ayrım pratik bir işe yarıyor: zaman kısıtlı olduğunda önce (a) listesindeki adımlar
+yapılır, çünkü onların ne işe yarayacağı hakkında elimde sayı var.
+
+#### 2.8.1 Ölçüme dayanan adımlar
+
+Aşağıdaki üç adımın gerekçesi bu bölümde ölçüldü.
+
+**1. Karo boyutunu küçültme denemesi (320 ve 256 piksel).** Bölüm 2.3.8'de recall'ı
+yöneten değişkenin kutunun piksel cinsinden yüksekliği olduğunu ölçtüm. Karo boyutunu
+küçültmek, karonun modelin 640 piksellik girdisine daha büyük oranda büyütülmesi
+demek; yani hedefin modelin gördüğü düzlemdeki **etkin yüksekliğini** artırıyor. Şu
+anda 512 piksellik karo 640'a büyütülüyor. 320 piksellik karo iki kat, 256 piksellik
+karo iki buçuk kat büyütülür. Bu, ölçülen açığa doğrudan müdahale: yüksekliği kutunun
+kendisinde değiştiremem ama modelin gördüğü ölçekte değiştirebilirim. Bedeli karo
+sayısının ve dolayısıyla koşu süresinin artması; bu değiş tokuş ölçülmeli.
+
+**2. Recall'ın yükseklik beştebirlerine göre raporlanması.** Bölüm 2.3.7'deki quintile
+eğrisi, yükseklik beştebirleri arasında recall'ın 0,1123'ten 0,5584'e çıktığını
+gösteriyor. Tek bir toplam recall sayısı (veri kümesinin tamamında 0,3160) bu
+dağılımın ortalamasıdır ve açığın nerede olduğunu gizler. En kısa beştebirde her on
+kişiden yaklaşık birini buluyorum; bu sayı toplam içinde görünmüyor. Bundan sonraki
+değerlendirmelerde recall tek bir sayı olarak değil, yükseklik beştebirleri kırılımıyla
+raporlanmalı. Aksi halde bir müdahalenin hangi hedef boyutunda işe yaradığı
+anlaşılamaz.
+
+**3. B türü kaynaklar için eşik ayarı değil, eğitim.** Bölüm 2.2.2'de, güven eşiği
+ölçtüğüm en düşük değere (0,05) indirildiğinde bile B türü kaynaklardaki 101 kutunun
+**64'ünün** hiçbir adayla eşleşmediğini ölçtüm. Bu, eşik ayarıyla kapatılabilecek bir
+açık değil: sıralanacak aday üretilmiyor. Bölüm 2.2.4 aynı eşik indirimi için
+görüntü başına yanlış alarmın 0,89'dan 13,54'e çıktığını gösteriyor; yani eşik ayarı
+hem etkisiz hem pahalı. Bu kaynaklar için yol, veri kümesine özgü eğitimden geçiyor.
+
+#### 2.8.2 Gerekçesi henüz ölçülmemiş adımlar
+
+Aşağıdaki üç adım denenebilir, ancak **bu bölümdeki ölçümler onları desteklemiyor**.
+Buraya koymamın sebebi, akla gelmiş olmaları ve ileride ölçülebilir hale
+gelebilecekleri; şu an gerekçeleri yok.
+
+**1. Döndürme artırımı (rotation augmentation).** Bölüm 2.3.2'de en-boy oranı
+ayrışmasını "model ayakta duran insan önseline sahip" diye yorumlamıştım; bu yorum
+doğru olsaydı, eğitim verisini döndürerek çoğaltmak makul bir müdahale olurdu. Ancak
+bölüm 2.3.5'teki koşullu analizde bu gerekçe zayıfladı: yükseklik sabitlendiğinde oran
+etkisi tabakaların çoğunda çöktü. Üstelik uzun yükseklik tabakasında yatay kutuların
+recall'ı 0,5312 ile kare benzerlerinkinin (0,4263) üzerinde; yani yatay kutular o
+tabakada zaten bulunuyor. Döndürme artırımının çözeceği varsayılan problem, ölçtüğüm
+yerde görünmüyor.
+
+**2. Yanlış pozitiflerin insan yapısı nesnelere yakınlığının ölçülmesi.** Yanlış
+alarmların bir kısmının bina, araç veya yol gibi insan yapısı nesnelerin çevresinde
+yoğunlaştığına dair bir izlenimim var. Bu izlenim şu anda **iki görsellik bir
+gözleme** dayanıyor; sayısı yok, sistematik değil ve bu bölümde ölçülmedi. Ölçülebilir
+hale gelmesi için yanlış pozitif konumlarının bu tür nesnelere uzaklığının
+hesaplanması gerekir, bu da o nesnelerin etiketlenmiş olmasını gerektirir. Elimde
+böyle bir etiket yok.
+
+**3. Arka plan doku karmaşıklığının ölçülmesi.** Bölüm 1'de B türü sapmanın düşük
+kontrasttan gelebileceği hipotezi ölçülüp çürütülmüştü. Geriye kalan adaylardan biri
+arka planın doku karmaşıklığı: kutunun çevresindeki yerel varyans ve kenar yoğunluğu.
+Bu ölçüm bu bölümde yapılmadı. B türü kaçırmaların üretim problemi olduğunu 2.2.2'de
+ölçtüm, ancak **neden** üretilmediğine dair bir ölçüm hâlâ yok; doku karmaşıklığı bu
+sorunun aday cevaplarından yalnızca biri ve şu an diğerlerinden daha güçlü bir
+dayanağı yok.
+
+#### 2.8.3 Bu bölümde kapatılmayan sorular
+
+Aşağıdaki üç soru bu bölümde açıldı veya açık kaldı; hiçbiri cevaplanmadı.
+
+**1. Orta yükseklik tabakasındaki oran farkı.** Bölüm 2.3.8'de açık soru olarak
+yazıldı. Oran etkisi kısa ve uzun yükseklik tabakalarında çökerken orta tabakada
+korunuyor: veri kümesinin tamamında +0,2266, ZRI hariç kapsamda +0,3150. Bu
+tabakanın hücreleri örneklem bakımından zayıf değil, yani düzensizliği gürültüye
+bağlayamıyorum. Açıklaması yok.
+
+**2. Koordinat kaynağı kararı.** Bölüm 2.5.5'te kısıt olarak yazıldı. Veri
+kümesindeki görüntülerde EXIF/GPS alanları boş geldiği için tespitlerin yeryüzü
+konumu bilinmiyor. Veritabanı şemasında sütunlar hazır ve PostGIS kurulu, ancak
+konumun nereden geleceği bu bölümde karara bağlanmadı.
+
+**3. CAB etiket denetiminin kapsamı.** Bölüm 2.4'te sınır olarak yazıldı. Denetim tek
+görselde tek nesneyle sınırlı kaldı; CAB'deki 34 kutunun %3'ünden azı incelendi.
+Etiket kalitesinin recall'a katkısı ölçülmedi ve bu katkının büyüklüğüne dair elimde
+hiçbir sayı yok.
