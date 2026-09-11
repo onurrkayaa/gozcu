@@ -27,8 +27,12 @@ OLCUM_SCRIPTI = SCRIPT_DIZIN / "01_taban_cizgisi.py"
 PROTOKOL = {
     "--bolum": "test",
     "--iou": "0.3",
-    "--model": "yolo11n.pt",
 }
+
+# Taban cizgisi egitimsiz modelle olculur. Egitilmis bir agirlikla ayni protokolu
+# kosmak icin --model verilir; protokolun geri kalani (bolum, karo, ortusme, IoU,
+# esikler, cihaz) degismedigi icin iki olcum dogrudan karsilastirilabilir.
+PROTOKOL_MODEL = "yolo11n.pt"
 
 # Karo olcegi protokolun geri kalanindan ayri tutulur: "karo kucultmek TEK BASINA
 # ne kazandiriyor" sorusu ancak olcegi degistirip geri kalan her seyi sabit
@@ -56,6 +60,17 @@ def argumanlari_coz() -> argparse.Namespace:
             "degistirilemez; degistirilebilirse taban cizgisi olma ozelligini kaybeder."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    ayrastirici.add_argument(
+        "--model", default=PROTOKOL_MODEL,
+        help="Olculecek Ultralytics agirligi. Varsayilan, taban cizgisinin egitimsiz modelidir.",
+    )
+    ayrastirici.add_argument(
+        "--etiket", default=None,
+        help=(
+            "Cikti dosyalarini test_<etiket>.csv ve test_kutu_bazinda_<etiket>.csv "
+            "olarak adlandirir. Verilmezse taban cizgisi adlari kullanilir."
+        ),
     )
     ayrastirici.add_argument(
         "--karo", type=int, default=PROTOKOL_KARO,
@@ -114,20 +129,33 @@ def main() -> None:
         arg.ortusme = PROTOKOL_ORTUSME
     # Taban cizgisi dosya adi soneksizdir; her farkli olcek kendi dosyasina yazar.
     sonek = "" if arg.karo == PROTOKOL_KARO else f"_karo{arg.karo}"
+    if arg.etiket:
+        # Etiket verildiginde taban cizgisi adlari hic kullanilmaz; boylece
+        # egitilmis modelin olcumu taban dosyalarinin uzerine yazamaz.
+        taban_ad, kutu_ad = f"test_{arg.etiket}", f"test_kutu_bazinda_{arg.etiket}"
+        sonek = ""
+    else:
+        taban_ad, kutu_ad = TABAN_CIKTI, KUTU_CIKTI
 
     argv = [str(OLCUM_SCRIPTI)]
     for ad, deger in PROTOKOL.items():
         argv += [ad, deger]
+    argv += ["--model", arg.model]
     argv += ["--karo", str(arg.karo), "--ortusme", str(arg.ortusme)]
     argv += ["--conf", *CONF_ESIKLERI]
     # Onek bazinda cikti, test bolumunde hangi kaynaklarin bulundugunu ve her
     # birinden kac hedef geldigini ayni dosyaya yazar.
     argv += ["--onek-bazinda"]
     argv += ["--limit", str(arg.limit)]
-    argv += ["--cikti", str(rapor_kok / f"{onek}{TABAN_CIKTI}{sonek}.csv")]
-    argv += ["--kutu-cikti", str(rapor_kok / f"{onek}{KUTU_CIKTI}{sonek}.csv")]
+    argv += ["--cikti", str(rapor_kok / f"{onek}{taban_ad}{sonek}.csv")]
+    argv += ["--kutu-cikti", str(rapor_kok / f"{onek}{kutu_ad}{sonek}.csv")]
 
-    print("=== TEST BOLUMU TABAN CIZGISI (egitimsiz yolo11n) ===")
+    if arg.model == PROTOKOL_MODEL:
+        print("=== TEST BOLUMU TABAN CIZGISI (egitimsiz yolo11n) ===")
+    else:
+        print(f"=== TEST BOLUMU OLCUMU (model: {arg.model}) ===")
+        print(f"Protokol taban cizgisiyle ayni; degisen tek sey agirlik. "
+              f"Taban cizgisi modeli: {PROTOKOL_MODEL}")
     if arg.karo != PROTOKOL_KARO:
         print(f"OLCEK DENEYI: karo {arg.karo}, ortusme {arg.ortusme}. Taban cizgisi "
               f"karo {PROTOKOL_KARO}'dir; bu kosu onun yerine gecmez, yanina yazilir.")

@@ -15,6 +15,11 @@ reports/*
 !reports/README.md
 reports/karo_veri_manifest_*.csv
 
+# Egitim agirliklari ve Kaggle kosu ciktisi - buyuk ikili dosyalar depoya girmez.
+# Egitim metrikleri reports/model512_egitim.csv olarak ayrica izleniyor.
+agirliklar/*.pt
+egitim/kaggle_cikti/
+
 # Model ağırlıkları - ilk çalıştırmada otomatik iner
 *.pt
 
