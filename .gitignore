@@ -21,3 +21,10 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# Ortam degiskenleri - sirlar depoya girmez
+.env
+
+# Yuklenen goruntuler
+backend/media/*
+!backend/media/.gitkeep

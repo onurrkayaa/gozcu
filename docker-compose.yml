@@ -1,0 +1,42 @@
+services:
+  db:
+    # PostgreSQL 16 + PostGIS 3.5.
+    # Resmi postgis/postgis yalnizca amd64 yayinlar. imresamu/postgis, docker-postgis
+    # bakimcilarindan birinin cok mimarili TEST deposudur ve arm64 destegi DENEYSEL
+    # olarak isaretlidir; Apple Silicon uzerinde calisabilmek icin bu etiket secildi.
+    # Yedek: image: postgis/postgis:16-3.5 + platform: linux/amd64 (Rosetta, daha yavas)
+    image: imresamu/postgis:16-3.5
+    container_name: gozcu_db
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  web:
+    build: ./backend
+    container_name: gozcu_web
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
