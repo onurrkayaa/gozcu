@@ -1,4 +1,6 @@
-# [PROJE ADI]
+# Gözcü
+
+*Aerial search-and-rescue detection assistant*
 
 **Havadan çekilmiş arama-kurtarma görüntülerinde kayıp insan tespiti**
 

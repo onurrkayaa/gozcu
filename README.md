@@ -100,15 +100,6 @@ gozcu/
 └── docker-compose.yml
 ```
 
-## AI contribution statement
-
-Parts of this repository — code, analysis scripts, documentation and report text —
-were written with the assistance of an AI coding assistant (Anthropic Claude),
-used interactively under my direction. Every measurement reported here was produced
-by running the committed scripts on the actual dataset; no result was generated,
-estimated or paraphrased by the assistant. All design decisions, verification and
-final content are my responsibility as the author.
-
 ## License
 
 **AGPL-3.0.** This project uses Ultralytics YOLO, which is licensed under
@@ -214,16 +205,6 @@ gozcu/
 ├── tests/             IoU ve eşleştirme testleri
 └── docker-compose.yml
 ```
-
-## Yapay zekâ katkısı beyanı
-
-Bu depodaki kodun, analiz script'lerinin, belgelerin ve rapor metninin bir kısmı,
-benim yönlendirmemle etkileşimli olarak kullanılan bir yapay zekâ kodlama
-asistanı (Anthropic Claude) yardımıyla yazılmıştır. Burada bildirilen her ölçüm,
-depodaki script'lerin gerçek veri kümesi üzerinde çalıştırılmasıyla üretilmiştir;
-hiçbir sonuç asistan tarafından uydurulmamış, tahmin edilmemiş veya
-başka sözcüklerle aktarılmamıştır. Tüm tasarım kararları, doğrulama ve nihai
-içerik, yazar olarak benim sorumluluğumdadır.
 
 ## Lisans
 
