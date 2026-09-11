@@ -1,7 +1,15 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .views import MissionFrameListCreateView, MissionListCreateView, health
+from .views import (
+    MissionFrameListCreateView,
+    MissionListCreateView,
+    MissionRunCreateView,
+    ModelVersionListView,
+    RunDetailView,
+    RunDetectionListView,
+    health,
+)
 
 urlpatterns = [
     path("health/", health, name="health"),
@@ -13,4 +21,16 @@ urlpatterns = [
         MissionFrameListCreateView.as_view(),
         name="mission-frames",
     ),
+    path(
+        "missions/<int:mission_id>/runs/",
+        MissionRunCreateView.as_view(),
+        name="mission-runs",
+    ),
+    path("runs/<int:pk>/", RunDetailView.as_view(), name="run-detail"),
+    path(
+        "runs/<int:run_id>/detections/",
+        RunDetectionListView.as_view(),
+        name="run-detections",
+    ),
+    path("models/", ModelVersionListView.as_view(), name="model-list"),
 ]

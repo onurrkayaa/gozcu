@@ -110,3 +110,45 @@ REST_FRAMEWORK = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = DEBUG
+
+# --- Celery ---------------------------------------------------------------
+CELERY_BROKER_URL = env("CELERY_BROKER_URL")
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND")
+
+# Yalnizca json: pickle acik birakilirsa broker'a erisebilen biri kod calistirir.
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Zaman asimlari acikca tanimli: asili kalan bir karo tum kuyrugu tikamasin.
+# soft -> gorev SoftTimeLimitExceeded yakalayip kendini failed isaretleyebilir.
+# hard -> soft'u yutan bir sey olursa surec yine de oldurulur.
+CELERY_TASK_SOFT_TIME_LIMIT = 600
+CELERY_TASK_TIME_LIMIT = 660
+
+# acks_late: mesaj gorev BITTIKTEN sonra onaylanir. Isci is ortasinda olurse
+# mesaj kaybolmaz, baska bir isciye yeniden dagitilir. Bedeli, gorevin iki kez
+# calisabilmesidir -- bu yuzden tasks.py'deki sil-sonra-yaz idempotanslik
+# ZORUNLUDUR, ikisi birbirine baglidir.
+CELERY_TASK_ACKS_LATE = True
+# Her isci ayni anda tek is tutsun; acks_late ile birlikte olen bir iscinin
+# geri dondurdugu is miktari en aza iner.
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+
+# visibility_timeout: Redis, onaylanmamis bir mesaji bu sure sonunda yeniden
+# dagitir. Hard time limit'in (660 sn) rahatca uzerinde secildi -- boylece hala
+# calisan bir gorev asla "olmus" sayilip ikinci kez dagitilmaz; yeniden dagitim
+# sadece isci gercekten oldugunde devreye girer.
+CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 900}
+CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = {"visibility_timeout": 900}
+
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+
+# Dedektor cikitisinin KAYIT tabani. Koşunun conf_threshold'u kayda
+# pisirilmez: bir tam tarama pahalidir, tek kosudan her esigi cevaplayabilmek
+# icin kutular bu sabit tabanla saklanir, esik okuma aninda uygulanir.
+DETECTION_STORE_FLOOR = 0.05

@@ -22,6 +22,22 @@ services:
       retries: 10
       start_period: 10s
 
+  redis:
+    # Celery broker'i ve sonuc deposu. Resmi redis imaji; etiket yama surumune
+    # kadar sabit. arm64 destegi "docker image inspect" ile dogrulandi.
+    image: redis:8.10.1-alpine
+    container_name: gozcu_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
   web:
     build: ./backend
     container_name: gozcu_web
@@ -37,6 +53,27 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    # web ile AYNI imaj: ayni kod, ayni bagimliliklar, ayri surec.
+    build: ./backend
+    container_name: gozcu_worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+    volumes:
+      - ./backend:/app
+    command: ["celery", "-A", "gozcu_api", "worker", "--loglevel=info", "--concurrency=2"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   pgdata:
+  redisdata:

@@ -45,3 +45,35 @@ def api_client():
 def auth_client(api_client, user):
     api_client.force_authenticate(user=user)
     return api_client
+
+
+@pytest.fixture
+def celery_eager(settings):
+    """Gorevleri kuyruk olmadan, cagrildiklari yerde senkron calistirir."""
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    settings.CELERY_TASK_EAGER_PROPAGATES = False
+    from gozcu_api.celery import app
+
+    app.conf.task_always_eager = True
+    app.conf.task_eager_propagates = False
+    return settings
+
+
+@pytest.fixture
+def model_version(db):
+    from core.models import ModelVersion
+
+    return ModelVersion.objects.get(name="fake-v0")
+
+
+@pytest.fixture
+def mission_with_frames(db, user, make_image):
+    """Uc kareli bir gorev. Kareler kucuk: karolama mantigi ayrica test ediliyor."""
+    from core.models import Mission
+    from core.services import ingest_frame
+
+    mission = Mission.objects.create(name="Test gorevi", created_by=user)
+    for i in range(3):
+        # Her kare farkli renkte olsun ki sha256'lari ayrilsin (tekillik kisiti).
+        ingest_frame(mission, make_image(name=f"k{i}.jpg", color=(i * 40, 100, 200)))
+    return mission
