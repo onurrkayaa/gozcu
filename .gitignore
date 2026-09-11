@@ -4,8 +4,16 @@
 # Veri kümesi - depoya girmez, boyutu büyük ve lisansı ayrı (CC BY 4.0)
 data/
 
-# Üretilen çıktılar - kod her seferinde yeniden üretir
-reports/
+# Uretilen ciktilar - secici izleme.
+# Olcum CSV'leri depoya girer: rapor metinlerinin atif yaptigi sayilar ve
+# kutu bazinda kayitlar bunlarin icinde. Kutu bazinda kayitlar buyuk, ama
+# uretimleri saatler surdugu icin "yeniden uretilebilir" sayilmazlar.
+# Karo manifesti 3 dakikada yeniden uretildigi icin disarida kalir; gorseller,
+# loglar ve alt dizinler de oyle. Ayrinti: reports/README.md
+reports/*
+!reports/*.csv
+!reports/README.md
+reports/karo_veri_manifest_*.csv
 
 # Model ağırlıkları - ilk çalıştırmada otomatik iner
 *.pt
