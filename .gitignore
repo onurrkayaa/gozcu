@@ -33,6 +33,10 @@ __pycache__/
 # Ortam degiskenleri - sirlar depoya girmez
 .env
 
+# Kaggle API kimligi - normalde ~/.kaggle icinde durur, kazaen proje
+# kokune kopyalanirsa depoya girmesin
+kaggle.json
+
 # Yuklenen goruntuler
 backend/media/*
 !backend/media/.gitkeep
