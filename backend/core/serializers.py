@@ -48,6 +48,7 @@ class MissionSerializer(serializers.ModelSerializer):
     frame_count = serializers.SerializerMethodField()
     frame_counts = serializers.SerializerMethodField()
     latest_run = serializers.SerializerMethodField()
+    my_role = serializers.SerializerMethodField()
 
     class Meta:
         model = Mission
@@ -61,6 +62,7 @@ class MissionSerializer(serializers.ModelSerializer):
             "frame_count",
             "frame_counts",
             "latest_run",
+            "my_role",
         )
         read_only_fields = (
             "id",
@@ -70,7 +72,23 @@ class MissionSerializer(serializers.ModelSerializer):
             "frame_count",
             "frame_counts",
             "latest_run",
+            "my_role",
         )
+
+    def get_my_role(self, mission):
+        """Istekte bulunan kullanicinin bu gorevdeki rolu.
+
+        Arayuzun hangi denetimleri gosterecegini buna gore secmesi icin var.
+        Yetki kararini bu alan VERMEZ -- yetki her uctan ayrica dogrulanir;
+        bu alan yalnizca kullaniciya calismayacak dugme gostermemek icin.
+        """
+        istek = self.context.get("request")
+        if istek is None or not istek.user.is_authenticated:
+            return None
+        for uyelik in mission.members.all():
+            if uyelik.user_id == istek.user.id:
+                return uyelik.role
+        return None
 
     def get_frame_count(self, mission):
         # Annotate edilmisse ek sorgu yok; edilmemisse (tekil kullanim) say.

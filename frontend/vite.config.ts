@@ -15,6 +15,14 @@ export default defineConfig({
       "/api": { target: API_HEDEF, changeOrigin: true },
     },
   },
+  // Üretim derlemesini yerelde denerken de aynı proxy gerekiyor; aksi halde
+  // `vite preview` /api isteklerini kendi sunucusunda arar ve 404 döner.
+  preview: {
+    port: 4173,
+    proxy: {
+      "/api": { target: API_HEDEF, changeOrigin: true },
+    },
+  },
   test: {
     globals: true,
     environment: "jsdom",

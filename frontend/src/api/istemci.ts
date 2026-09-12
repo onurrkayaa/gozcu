@@ -80,6 +80,14 @@ function hatayiCozumle(
 
   const kayit = govde as Record<string, unknown>;
 
+  // 404'ün gövdesi Django'nun kendi İngilizce metnidir ("No Mission matches
+  // the given query.") ve son kullanıcıya gösterilecek bir içerik değildir.
+  // Üstelik bir kaydın var olup olmadığını da ima eder. Bu yüzden 404'te
+  // backend metnini DEĞİL kendi mesajımızı kullanıyoruz.
+  if (durumKodu === 404) {
+    return { mesaj: GENEL_HATA_METINLERI[404], alanHatalari: {} };
+  }
+
   if (typeof kayit.detail === "string") {
     return { mesaj: kayit.detail, alanHatalari: {} };
   }

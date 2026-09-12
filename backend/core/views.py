@@ -90,6 +90,9 @@ def gorev_querysetini_kur(user):
         .annotate(frame_count_annotated=Count("frames", distinct=True))
         .annotate(**sayim_annotasyonlari)
         .prefetch_related(
+            # my_role alani her gorev icin uyelikleri okuyor; prefetch olmadan
+            # liste uzunlugu kadar ek sorgu calisirdi.
+            "members",
             Prefetch(
                 "runs",
                 queryset=InferenceRun.objects.select_related("model_version").order_by(
