@@ -73,6 +73,13 @@ def argumanlari_coz() -> argparse.Namespace:
         ),
     )
     ayrastirici.add_argument(
+        "--tahmin-kaydi", type=Path, default=None,
+        help=(
+            "Verilirse NMS sonrasi tum tahminler (TP + FP) bu CSV'ye yazilir. "
+            "FP/goruntu'nun esige gore nasil degistigi ancak bu dosyayla hesaplanir."
+        ),
+    )
+    ayrastirici.add_argument(
         "--karo", type=int, default=PROTOKOL_KARO,
         help=(
             "Karo kenar uzunlugu. Varsayilan disinda bir deger verilirse cikti "
@@ -141,6 +148,8 @@ def main() -> None:
     for ad, deger in PROTOKOL.items():
         argv += [ad, deger]
     argv += ["--model", arg.model]
+    if arg.tahmin_kaydi:
+        argv += ["--tahmin-kaydi", str(arg.tahmin_kaydi)]
     argv += ["--karo", str(arg.karo), "--ortusme", str(arg.ortusme)]
     argv += ["--conf", *CONF_ESIKLERI]
     # Onek bazinda cikti, test bolumunde hangi kaynaklarin bulundugunu ve her

@@ -95,6 +95,15 @@ def argumanlari_coz() -> argparse.Namespace:
         ),
     )
     ayrastirici.add_argument(
+        "--tahmin-kaydi", type=Path, default=None,
+        help=(
+            "Verilirse NMS sonrasi TUM tahminler (eslesen + eslesmeyen) bu CSV'ye "
+            "yazilir. Kutu bazinda kayit yalnizca gercek kutulari tutar; FP'lerin "
+            "esige gore nasil degistigi ancak bu dosyayla hesaplanabilir. "
+            "Verilmezse hicbir sey yazilmaz ve diger ciktilar degismez."
+        ),
+    )
+    ayrastirici.add_argument(
         "--dogrula", action="store_true",
         help=(
             "Tek-tarama-sonra-filtreleme optimizasyonunu dogrular: bir goruntuyu en "
@@ -253,6 +262,47 @@ def kutu_bazinda_satirlar(
     return satirlar
 
 
+def tahmin_satirlari(
+    gercekler: dict[Path, list[Kutu]],
+    tahminler: dict[Path, list[Kutu]],
+    ciftler: list[tuple[Path, Path]],
+    conf: float,
+    iou_esigi: float,
+) -> list[dict]:
+    """Taban esigindeki her tahmini TP/FP etiketiyle birlikte kaydeder.
+
+    Eslestirme tahminleri skora gore AZALAN sirada gezer; esik yukseltmek yalnizca
+    en dusuk skorlu tahminleri listeden atar ve daha yuksek skorlu tahminlerin
+    atamasini degistirmez. Bu yuzden burada yazilan TP/FP etiketi, esigin uzerinde
+    kalan her tahmin icin daha yuksek esiklerde de gecerlidir; FP/goruntu egrisi
+    yeni tarama yapmadan bu dosyadan turetilebilir."""
+    bolum_haritasi = {yol: etiket_dizin.parent.name for yol, etiket_dizin in ciftler}
+    satirlar: list[dict] = []
+
+    for yol, gercek_kutular in gercekler.items():
+        secilen = [k for k in tahminler.get(yol, []) if k.skor >= conf]
+        eslesmeler, _, _ = kutulari_eslestir(gercek_kutular, secilen, iou_esigi)
+        # tahmin indeksi -> (eslesilen gercek kutu indeksi, IoU)
+        tahmin_haritasi = {t_idx: (g_idx, iou) for g_idx, t_idx, iou in eslesmeler}
+
+        for t_idx, kutu in enumerate(secilen):
+            gercek_idx, iou_degeri = tahmin_haritasi.get(t_idx, (None, None))
+            satirlar.append({
+                "goruntu_adi": yol.name,
+                "bolum": bolum_haritasi.get(yol, ""),
+                "kaynak_onek": onek_cikar(yol),
+                "skor": sayi_bicimle(kutu.skor, 4),
+                "x1": sayi_bicimle(kutu.x1, 1),
+                "y1": sayi_bicimle(kutu.y1, 1),
+                "x2": sayi_bicimle(kutu.x2, 1),
+                "y2": sayi_bicimle(kutu.y2, 1),
+                "eslesme_durumu": "TP" if gercek_idx is not None else "FP",
+                "eslesilen_gercek_kutu_id": gercek_idx if gercek_idx is not None else "",
+                "eslesen_iou": sayi_bicimle(iou_degeri, 4) if iou_degeri is not None else "",
+            })
+    return satirlar
+
+
 def metrik_satiri(
     ad: str,
     gercekler: dict[Path, list[Kutu]],
@@ -407,11 +457,21 @@ def main() -> None:
     )
     hedef_kutu = csv_yaz(arg.kutu_cikti, kutu_satirlari, kosu)
 
+    # Tahmin kaydi yalnizca istenirse uretilir; varsayilan davranis degismez.
+    hedef_tahmin = None
+    if arg.tahmin_kaydi:
+        tahmin_satir = tahmin_satirlari(
+            gercekler, tahminler, ciftler, en_dusuk_conf, arg.iou
+        )
+        hedef_tahmin = csv_yaz(arg.tahmin_kaydi, tahmin_satir, kosu)
+
     print("\n=== TABAN CIZGISI (karolamali, SAHI) ===")
     tablo_bas(satirlar, [k for k in satirlar[0]])
     print(f"\nToplam tarama suresi: {toplam_sure/60:.1f} dk")
     print(f"CSV kaydedildi        : {hedef}")
     print(f"Kutu bazinda kayit    : {hedef_kutu}  ({len(kutu_satirlari)} satir)")
+    if hedef_tahmin:
+        print(f"Tahmin kaydi          : {hedef_tahmin}  ({len(tahmin_satir)} satir)")
 
 
 if __name__ == "__main__":

@@ -15,8 +15,12 @@ notebook'unu içerir. Eğitim yerelde değil Kaggle'da koşar; sebebi GPU.
 1. Kaggle'da **Code → New Notebook**, sonra `kaggle_egitim.ipynb` dosyasını
    **File → Import Notebook** ile yükle.
 2. Sağ paneldeki **Input** bölümünden **Add Input → Datasets** ile
-   `gozcu-karo-512` kümesini ekle. Notebook `/kaggle/input/gozcu-karo-512`
-   yolunu bekler; küme başka bir adla bağlanırsa 5. hücre hata verir.
+   `gozcu-karo-512` kümesini ekle. Notebook sabit bir yol beklemez: bağlama
+   yolunu `/kaggle/input` altında `data.yaml` arayarak kendisi bulur. Kaggle
+   özel kümeleri `/kaggle/input/datasets/<kullanıcı>/<slug>`, herkese açık
+   olanları `/kaggle/input/<slug>` altına bağlar; ikisi de çalışır. Yalnızca
+   **tek bir** küme bağlı olmalıdır — birden fazla `data.yaml` bulunursa
+   notebook bilerek durur, yanlış kümeyle eğitmemek için.
 3. Sağ panelde **Accelerator = GPU T4 x2** seç.
    Notebook `device=0` kullanır, yani iki GPU'dan yalnızca birini kullanır —
    notebook içinde çok GPU'lu DDP kırılgan olduğu için bu bilinçli bir karardır.
