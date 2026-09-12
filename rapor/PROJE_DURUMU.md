@@ -4,7 +4,7 @@ Bu dosya rapor gövdesinin parçası değildir; nerede olduğumuzu ve sıradaki 
 olduğunu tek yerde tutar. Buradaki her sayı bir çıktı dosyasından okunur ve yanında
 üreten CSV ile script yazar. Bir sayı ile bu dosya çelişirse **CSV kazanır**.
 
-Son güncelleme: Hafta 5 kapanışı — operatör arayüzü ve konum kaynağı kararı.
+Son güncelleme: Hafta 6 kapanışı — görev üyeliği, inceleme, coğrafi bulgu ve harita.
 
 ---
 
@@ -15,8 +15,14 @@ Hafta 4'te kendi verimizle model eğitildi, ONNX'e aktarıldı ve gerçek Celery
 hattına bağlandı; **Hafta 4 kapanmıştır** ve sonuçları `rapor/bolum_05.md`
 dosyasında raporlanmıştır.
 
-Hafta 5'te operatör arayüzü kuruldu ve gerçek backend'e bağlandı.
-**Hafta 5 kapanmıştır** (ayrıntı: bölüm 2.12–2.14). Sıradaki ana iş Hafta 6'dır.
+Hafta 5'te operatör arayüzü kuruldu ve gerçek backend'e bağlandı; **Hafta 5
+kapanmıştır** (ayrıntı: bölüm 2.12–2.14) ve `rapor/bolum_06.md` dosyasında
+raporlanmıştır.
+
+Hafta 6'da erişim görev üyeliğine oturtuldu, operatör kararı ayrı bir kayda
+alındı, coğrafi bulgu modeli PostGIS ile kuruldu, bulgular Union-Find ile
+kümelendi ve harita eklendi. **Hafta 6 kapanmıştır** (ayrıntı: bölüm 2.15–2.19).
+Sıradaki ana iş Hafta 7'dir.
 
 ## 2. Ölçülenler
 
@@ -264,6 +270,163 @@ metriği değildir**. Başlangıç değeri sabit yazılmaz, koşunun kendi
 `conf_threshold` değerinden gelir. Kutular 0,05 tabanıyla saklandığı için tek
 bir taramadan farklı eşikler yeniden tarama olmadan sorulabilir.
 
+### 2.15. Görev üyeliği ve erişim denetimi (Hafta 6)
+
+Hafta 5'e kadar erişim tek ölçüte bağlıydı: görevi kim oluşturduysa onu
+görüyordu. Bu, ekip işi bir bağlamda yetersiz. `MissionMember` kaydı görev ile
+kullanıcı arasına üç rol koyuyor: sahip (üyelik ve rol yönetir), operatör (kare
+ekler, tarama başlatır, inceleme ve bulgu yazar), izleyici (yalnızca okur).
+
+`Mission.created_by` silinmedi — geçmiş kayıtların kim tarafından açıldığını
+açıklamaya devam ediyor — ama **yetki taşımıyor**. Mevcut on görevin sahibi
+migration ile owner üyeliğine taşındı; veri kaybı olmadı (10 görev, 496 kare,
+6622 tespit korundu).
+
+Görev oluşturulunca owner üyeliğini bir `post_save` sinyali yazıyor. Kural
+yalnızca API view'ında dursaydı yönetim komutundan, fixture'dan veya testten
+açılan her görev sahipsiz kalırdı.
+
+Üye olmayan kullanıcı **403 değil 404** alır: 403, kaydın varlığını sızdırır ve
+kimlik deneyerek başkasının kaç görevi olduğunu saymayı mümkün kılar.
+
+| İşlem | owner | operator | viewer | üye değil |
+|---|---|---|---|---|
+| Görev görüntüleme | 200 | 200 | 200 | 404 |
+| Kare ekleme | 201 | 201 | 403 | 404 |
+| Tarama başlatma | 202 | 202 | 403 | 404 |
+| İnceleme yazma | 201 | 201 | 403 | 404 |
+| Bulgu yazma | 201 | 201 | 403 | 404 |
+| Kümeleme çalıştırma | 200 | 200 | 403 | 404 |
+| Üye ekleme | 201 | 403 | 403 | 404 |
+| Denetim okuma | 200 | 200 | 200 | 404 |
+| Denetim yazma girişimi | 405 | 405 | 405 | 405 |
+
+Kaynak: `reports/hafta6_yetki_matrisi.csv` (`scripts/24_yetki_matrisi.py`)
+
+*Bu tablo ne söylüyor: Yirmi işlemin dördü ayrı kullanıcı sınıfıyla gerçekten
+çağrıldı ve dönen kodlar kaydedildi; matris bir niyet beyanı değil ölçüm.
+Denetim satırındaki 405 her rolde aynı, çünkü denetim kaydına API'den yazma ucu
+hiç yok — owner bile yazamıyor.*
+
+### 2.16. /media/ açığının kapatılması (Hafta 6)
+
+Hafta 5 raporunda açık kısıt olarak kaydettiğim davranış kapatıldı. DEBUG
+açıkken Django `/media/` altını kimlik doğrulaması olmadan sunuyordu; üyelik
+devreye girince bu, denetimi tamamen dolaşan bir açık haline geldi.
+
+Yol tamamen kaldırıldı. Görüntüye tek erişim `/api/frames/{id}/image/` ucu:
+`Authorization` başlığını okuyor, karenin görevine üyeliği doğruluyor ve dosya
+adını istemciden değil veritabanından alıyor. Ölçüm: kimliksiz istek 404,
+kimlikli üyenin isteği de 404 (yol kapalı), güvenli uçtan üye 200 / üye olmayan
+404.
+
+### 2.17. Operatör incelemesi ve denetim kaydı (Hafta 6)
+
+`Review`, bir tespit için operatörün kararını (doğrulandı / reddedildi /
+belirsiz) ayrı bir tabloda tutuyor ve `Detection` kaydına dokunmuyor. Model
+çıktısı ile insan yargısı aynı alana yazılsaydı ikisi geri dönülmez biçimde
+karışır ve geçmiş ölçümler yeniden üretilemezdi.
+
+Tekillik `(tespit, inceleyen)` çiftinde: her operatör kendi kararını günceller,
+başkasınınkini ezmez. İki operatörün anlaşamadığı bilgisi korunuyor.
+
+`AuditLog` eklemeli: `save()` yalnızca ilk yazmaya izin veriyor, `delete()` her
+zaman hata veriyor, API'de yazma ucu yok. Kayıt işlemi yapan kodla **aynı
+transaction içinde** yazılıyor — işlem geri alınırsa kayıt da geri alınıyor,
+yani başarısız bir işlem sahte bir geçmiş üretmiyor. Hassas anahtarlar (parola,
+token, e-posta, oturum) kayda hiç girmiyor ve uzun değerler kırpılıyor.
+
+### 2.18. Coğrafi bulgu ve konum kaynağı (Hafta 6)
+
+`Finding`, haritada gösterilebilen bulguyu tutuyor. Konum `geography(Point,
+4326)` tipinde saklanıyor ve GiST indeksi kuruldu (PostGIS 3.5.3); bu sayede
+mesafe sorguları doğrudan **metre** cinsinden çalışıyor.
+
+Modelin en kritik alanı koordinat değil **kaynağı**. Beş değer ayırt ediliyor:
+konum yok, EXIF GPS, uçuş günlüğü, operatör girişi, demo/sentetik. İlk ikisi
+ölçülmüş sayılıyor ve **arayüzden seçilemiyor** — elle girilen bir koordinatın
+"EXIF'ten geldi" diye kaydedilmesi haritaya bakan kişiyi yanıltırdı.
+
+Bir veritabanı kısıtı, konum yokluğu ile koordinatın karışmasını engelliyor:
+konum boşsa kaynak `none` olmak zorunda, konum doluysa `none` olamaz. Böylece
+**null konum ile "0,0" birbirine karışmıyor** — 0,0 Gine Körfezi'nde gerçek bir
+noktadır.
+
+Detection kutusundan otomatik koordinat **üretilmiyor**. Piksel ile dünya
+arasında dönüşüm için kameranın konumu, irtifası, yönelimi ve görüş açısı
+gerekir; hiçbiri kayıtlarda yok.
+
+### 2.19. Union-Find kümelemesi ve harita (Hafta 6)
+
+Aynı görevdeki konumlu bulgular, metre cinsinden bir mesafe kuralıyla bağlı
+bileşenlere ayrılıyor. Aday çiftleri PostGIS buluyor; her çift Python'da
+karşılaştırılmıyor.
+
+**Eşik bir KARARDIR, ölçüm değildir.** Varsayılan 50 metre ve hiçbir alan
+ölçümünden türetilmedi.
+
+**Geçişlilik kasıtlı:** A–B ve B–C eşik içindeyse, A–C arası eşikten büyük olsa
+bile üçü aynı kümeye girer. Sonucu şu: eşik, kümenin çapı değildir.
+
+| Senaryo | Beklenen küme | Gerçek küme |
+|---|---|---|
+| Tek nokta | 1 | 1 |
+| İki yakın nokta (10 m) | 1 | 1 |
+| İki uzak nokta (500 m) | 2 | 2 |
+| Geçişli üçlü (40 + 40 m, uçlar 80 m) | 1 | 1 |
+| Aynı koordinat (üç kayıt) | 1 | 1 |
+| Eşik sınırının içinde (49 m) | 1 | 1 |
+| Eşik sınırının dışında (51 m) | 2 | 2 |
+| Demo ve gerçek yan yana (5 m) | 2 | 2 |
+| Konumsuz kayıt dâhil | 1 | 1 |
+| Farklı görevler | 2 | 2 |
+
+Kaynak: `reports/hafta6_kumeleme_dogrulama.csv` (`scripts/23_kumeleme_dogrula.py`)
+
+*Bu tablo ne söylüyor: On senaryonun onunda da beklenen ve gerçek küme sayısı
+uyuştu; hepsi deterministik ve idempotent çıktı. Geçişli üçlü satırı kasıtlı
+davranışın kanıtı: uçları eşikten uzak olduğu hâlde zincir tek küme üretiyor.
+Eşik sınırının iki yanı (49 ve 51 metre) mesafenin gerçekten metre cinsinden
+ölçüldüğünü gösteriyor.*
+
+Harita Leaflet ile eklendi ve bölüm 2.13'teki konum kararına tabi: **konumlu
+bulgu yoksa harita hiç açılmıyor**, çünkü boş bir dünya haritası "konum verisi
+var ama işaret yok" izlenimi verir. Demo koordinatlar kesikli çerçeveli
+işaretle çiziliyor, balonda kaynak görünüyor ve harita üstünde kapatılamayan bir
+uyarı duruyor.
+
+Demo verisi ayrı ve açık adlı bir görevde duruyor ("DEMO — sentetik konumlar
+(gerçek GPS değildir)"), `demo_konum_uret` yönetim komutuyla üretiliyor ve
+gerçek görüntülerden **türetilmiyor**.
+
+### 2.20. Hafta 6 test ve doğrulama sonuçları
+
+| Denetim | Sonuç |
+|---|---|
+| Backend testleri | 215 test, tamamı geçti (Hafta 5 sonunda 97 idi) |
+| Ölçüm script'i testleri | 145 test, tamamı geçti |
+| Arayüz testleri | 9 dosyada 105 test, tamamı geçti (Hafta 5 sonunda 63 idi) |
+| Arayüz lint | 0 hata |
+| TypeScript denetimi | Geçti |
+| Arayüz üretim derlemesi | Geçti |
+| Migration tutarlılığı | Bekleyen migration yok |
+| PostGIS uzamsal indeks | `gist (location)` doğrulandı |
+| Rol/işlem matrisi | 20 işlem, tamamı beklenen kodu döndü |
+| Kümeleme senaryoları | 10 senaryo, tamamı geçti |
+| Uçtan uca doğrulama | 26 kontrol, tamamı geçti |
+| Tarayıcı konsolu / ağ | Uygulama kaynaklı hata yok |
+
+*Bu tablo ne söylüyor: Üç test paketi de geçiyor ve backend testleri 97'den
+215'e çıktı — artış üyelik, inceleme, bulgu, denetim ve kümeleme için yazılan
+testlerden geliyor. Uçtan uca doğrulama dört ayrı kullanıcı sınıfıyla gerçek
+tarayıcıda yürütüldü; ayrıntısı `reports/hafta6_harita_dogrulama.csv`.*
+
+Ekran görüntüleri: `rapor/gorseller/hafta6/`
+
+**Bu doğrulama bir performans ölçümü değildir.** Kullanılan koşu Hafta 5'ten
+kalan iki karelik koşudur; model doğruluğu veya hız hakkında yeni bir iddia
+kurulmadı ve 157 karelik süre koşusu tekrarlanmadı.
+
 ## 3. Açık kısıtlar
 
 - **Kaynak aşinalığı:** Test hedeflerinin 939/970'i ZRI kaynağından ve ZRI eğitimde de
@@ -284,6 +447,16 @@ bir taramadan farklı eşikler yeniden tarama olmadan sorulabilir.
 - **JWT localStorage'da:** Backend HTTP-only çerez desteklemediği için token
   tarayıcı deposunda duruyor. Bir XSS açığı oturumun çalınması demektir; kabul
   edilen prototip sınırı budur ve `frontend/README.md` içinde yazılıdır.
+  Yenileme ucu rotasyon yapmıyor: çalınan bir refresh token ömrü boyunca
+  geçerli kalıyor.
+- **Kümeleme eşiği ölçülmedi:** 50 metre bir karardır. Gerçek uçuş verisi
+  olmadığı için hangi eşiğin doğru olduğu ölçülemedi.
+- **Küme merkezi ölçülmüş konum değildir:** üyelerin aritmetik ortalamasıdır.
+- **Kümeleme elle tetikleniyor:** yeni bulgu eklendiğinde kümeler kendiliğinden
+  yeniden hesaplanmıyor.
+- **Denetim kaydı ORM seviyesinde korunuyor:** veritabanına doğrudan erişimi
+  olan biri yine de geçmişi değiştirebilir. Amaç, uygulama kodunun veya bir API
+  ucunun kazara ya da kötü niyetle geçmişi bozmasını engellemek.
 - **Tarama iptali/yeniden başlatma yok:** Backend'de böyle bir uç yok, arayüz de
   uydurma düğme göstermiyor.
 - **Arayüzde listeler ilk sayfayla sınırlı:** Kare listesi ve bir karedeki tespit
@@ -294,13 +467,12 @@ bir taramadan farklı eşikler yeniden tarama olmadan sorulabilir.
 - Model-320 eğitilmedi, ölçülmedi; `agirliklar/` altında yalnızca Model-512 dosyaları var.
 - ONNX üzerinde doğruluk kaybı dışında bir hız optimizasyonu (batch, paralellik, quantize)
   denenmedi.
-- Harita gösterimi yok; gösterilecek gerçek koordinat olmadığı için Leaflet
-  bilinçli olarak eklenmedi.
-- Arayüzde tespit doğrulama/işaretleme (review) akışı yok; operatör adayları
-  görüyor ama kararını sisteme yazamıyor. Hafta 6 işi.
 - Uçtan uca (Playwright vb.) otomatik tarayıcı test paketi kurulmadı; tarayıcı
-  doğrulaması elle yürütüldü ve `reports/hafta5_frontend_dogrulama.csv` dosyasına
-  kaydedildi.
+  doğrulaması elle yürütüldü ve ölçüm kayıtlarına yazıldı.
+- Gerçek GPS'li veri hâlâ yok; haritada yalnızca elle girilen veya demo
+  koordinatlar görünebiliyor.
+- Arayüzde kullanıcı arama yok; üye eklerken kullanıcı adı elle yazılıyor.
+- Bulgu durumu ve başlığı API'den düzenlenebiliyor ama arayüze bağlanmadı.
 
 ## 5. Sıradaki işler
 
@@ -312,20 +484,21 @@ bir taramadan farklı eşikler yeniden tarama olmadan sorulabilir.
 4. ≥ 80 px bandındaki düşüşün kenar kuralıyla nedensel bağı (eğitim verisi tarafı ölçüldü,
    model tarafı ölçülmedi).
 
-### 5.2. Bir sonraki adımda fiilen yapılacak iş (Hafta 6)
+### 5.2. Bir sonraki adımda fiilen yapılacak iş (Hafta 7)
 
-Hafta 5 kapandı: operatör arayüzü kuruldu, gerçek API'ye bağlandı ve beş kapının
-tamamı geçildi (bölüm 2.14).
+Hafta 6 kapandı: üyelik, inceleme, coğrafi bulgu, denetim kaydı, kümeleme ve
+harita kuruldu; yedi kapının tamamı geçildi (bölüm 2.15–2.20).
 
-Hafta 6'nın işi, operatörün **kararını** sisteme yazabilmesidir. Şu an arayüz
-adayları gösteriyor ama operatörün "bu gerçek" / "bu değil" yargısı hiçbir yere
-kaydedilmiyor. Bu, Review ve Finding kayıtlarını, karar geçmişi için AuditLog'u
-ve görev üyeliği (MissionMember) ile yetkilendirmeyi gerektiriyor.
+Hafta 7'nin işi **yanlış pozitif analizidir**. Elimizde artık iki şey birden
+var: modelin ürettiği tespitler ve operatörün bunlar hakkındaki kararı. Bu
+ikisini yan yana koymak, Hafta 4'ten beri yalnızca etiketlere karşı ölçülen
+yanlış pozitiflerin gerçekte neye benzediğini incelemeyi mümkün kılıyor —
+reddedilen adaylar hangi arazi, boyut ve kontrast koşullarında yoğunlaşıyor.
 
-Yanına iki iş daha düşüyor: örtüşen karolardan gelen adayların tekilleştirilmesi
-(Union-Find) ve konum tarafı. Konum için karar zaten verili (bölüm 2.13) — harita
-kurulacaksa koordinat kaynağı alanı önce eklenmeli, demo koordinat açıkça
-etiketlenmeli ve gerçek GPS gibi sunulmamalıdır.
+Bu analiz yapılırken dikkat edilecek nokta şu: operatör kararı bir **etiket
+değildir**. Reddedilen bir aday gerçekten yanlış pozitif olabilir, ama operatör
+de yanılmış olabilir. İki kaynağı aynı sayıya karıştırmamak gerekiyor.
 
-Bölüm 5 yazıldı (`rapor/bolum_05.md`): Hafta 4'ün dışa aktarım, motor eşdeğerliği, gerçek
-süre, dayanıklılık ve tek-okuma sonuçlarını kaynak CSV'leriyle birlikte sunuyor.
+Bölüm 6 yazıldı (`rapor/bolum_06.md`): Hafta 5'in API sözleşmesi, arayüz
+mimarisi, oturum güvenlik sınırı, tespit geometrisi ve konum kaynağı kararını
+kaynak CSV'leriyle birlikte sunuyor.
