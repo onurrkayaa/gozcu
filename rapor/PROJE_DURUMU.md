@@ -4,7 +4,7 @@ Bu dosya rapor gövdesinin parçası değildir; nerede olduğumuzu ve sıradaki 
 olduğunu tek yerde tutar. Buradaki her sayı bir çıktı dosyasından okunur ve yanında
 üreten CSV ile script yazar. Bir sayı ile bu dosya çelişirse **CSV kazanır**.
 
-Son güncelleme: Hafta 4 kapanış denetimi.
+Son güncelleme: Hafta 4 kapanışı ve Bölüm 5'in yazılması.
 
 ---
 
@@ -12,7 +12,8 @@ Son güncelleme: Hafta 4 kapanış denetimi.
 
 Hafta 0–3'te ölçüm altyapısı, taban çizgisi ve asenkron tarama hattı kuruldu.
 Hafta 4'te kendi verimizle model eğitildi, ONNX'e aktarıldı ve gerçek Celery
-hattına bağlandı. **Hafta 4 kapanmıştır**; sıradaki ana iş Hafta 5'tir.
+hattına bağlandı. **Hafta 4 kapanmıştır** ve sonuçları `rapor/bolum_05.md`
+dosyasında raporlanmıştır; sıradaki ana iş Hafta 5'tir: operatör arayüzü.
 
 ## 2. Ölçülenler
 
@@ -156,9 +157,10 @@ Kaynak: `reports/tek_okuma_karsilastirma.csv` (`scripts/21_tek_okuma_karsilastir
 ham koşular `reports/gercek_onnx_celery_sure.csv` ve
 `reports/gercek_onnx_celery_sure_tek_okuma.csv`.
 
-Doğru okuma: **medyan kare süresi düştü, kuyruk sonu (p95) yükseldi.** ONNX çıkarım
-süresi arttı; artışın sebebi bu deneyde ölçülmedi ve görüntü okuma kazanımı olarak
-yazılamaz. Kuyruk bekleme farkı (medyan 845,4332 → 614,4650 sn) işçi zamanlamasına
+Doğru okuma: **medyan kare süresi düştü, kuyruk sonu (p95) yükseldi.** Kare toplam
+medyanı 19,8840 → 16,0092 sn (−%19,49) inerken p95 28,2916 → 31,6530 sn (+%11,88)
+yükseldi. ONNX çıkarım süresi de arttı (medyan +%63,99, p95 +%143,64); artışın
+**sebebi bu deneyde ölçülmedi** ve görüntü okuma kazanımı olarak yazılamaz. Kuyruk bekleme farkı (medyan 845,4332 → 614,4650 sn) işçi zamanlamasına
 bağlıdır, kod kazanımı sayılmaz.
 
 ## 3. Açık kısıtlar
@@ -196,10 +198,17 @@ bağlıdır, kod kazanımı sayılmaz.
 
 ### 5.2. Bir sonraki adımda fiilen yapılacak iş (Hafta 5)
 
-Operatörün sistemi fiilen kullanabildiği yüzü kurmak: görüntü yükleme, tarama başlatma,
-ilerleme takibi ve tespitlerin görüntü üzerinde eşik kaydırılarak incelenmesi. Arka uçta
-gereken her şey hazır — tespitler sabit bir depolama tabanıyla saklanıyor ve eşik okuma
-anında uygulanıyor, yani arayüzün eşik değiştirmesi yeni bir tarama gerektirmiyor.
+Operatörün sistemi fiilen kullanabildiği yüzü kurmak: React, Vite ve TypeScript ile
+arayüz, sunucu durumu için TanStack Query. Akış: görüntü yükleme, görev oluşturma, tarama
+başlatma, ilerleme takibi ve tespitlerin görüntü üzerinde eşik kaydırılarak incelenmesi.
+Arka uçta gereken her şey hazır — tespitler sabit bir depolama tabanıyla saklanıyor ve eşik
+okuma anında uygulanıyor, yani arayüzün eşik değiştirmesi yeni bir tarama gerektirmiyor.
 
-Bunun yanında Bölüm 5'in yazımı: Hafta 4'ün dışa aktarım, motor eşdeğerliği, gerçek süre
-ve dayanıklılık sonuçları bölüm için yeterli kanıta sahiptir.
+Hafta 5'in ilk kararı konum kaynağıdır. Kullanılan veri kümesindeki görüntülerin EXIF
+alanlarında koordinat yok; kare kayıtlarının konum alanları boş kalıyor. Boş alana gerçek
+koordinat varmış gibi değer yazılmayacak. Ya gerçek uçuş kaydı olan bir veri kullanılacak
+ya da arayüz gösterimi için üretilen koordinatlar **demo verisi** olarak açıkça
+etiketlenecek.
+
+Bölüm 5 yazıldı (`rapor/bolum_05.md`): Hafta 4'ün dışa aktarım, motor eşdeğerliği, gerçek
+süre, dayanıklılık ve tek-okuma sonuçlarını kaynak CSV'leriyle birlikte sunuyor.
