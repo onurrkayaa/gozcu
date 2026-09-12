@@ -191,3 +191,34 @@ describe("hata çevirisi", () => {
     });
   });
 });
+
+describe("404 metni", () => {
+  it("Django'nun İngilizce 404 gövdesi kullanıcıya gösterilmez", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonYanit({ detail: "No Mission matches the given query." }, 404),
+      ),
+    );
+
+    await expect(apiIstegi("/api/missions/12/")).rejects.toMatchObject({
+      durumKodu: 404,
+      message: "Aradığınız kayıt bulunamadı.",
+    });
+  });
+
+  it("404 mesajı kaydın varlığını ima etmez", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonYanit({ detail: "Gorev bulunamadi." }, 404)),
+    );
+
+    try {
+      await apiIstegi("/api/missions/12/");
+      expect.unreachable("404 bekleniyordu");
+    } catch (hata) {
+      const metin = (hata as Error).message;
+      expect(metin).not.toMatch(/Mission|query|görev bulunamadı/i);
+    }
+  });
+});
