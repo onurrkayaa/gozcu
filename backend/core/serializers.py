@@ -1,15 +1,104 @@
+from django.db.models import Count
 from rest_framework import serializers
 
 from .models import Detection, Frame, InferenceRun, Mission, ModelVersion
 
 
+class MissionRunSummarySerializer(serializers.ModelSerializer):
+    """Gorev listesinde kosuyu ozetler. InferenceRunSerializer'in alt kumesi."""
+
+    model_version_name = serializers.CharField(source="model_version.name", read_only=True)
+
+    class Meta:
+        model = InferenceRun
+        fields = (
+            "id",
+            "status",
+            "model_version",
+            "model_version_name",
+            "conf_threshold",
+            "frames_total",
+            "frames_done",
+            "frames_failed",
+            "started_at",
+            "finished_at",
+        )
+        read_only_fields = fields
+
+
 class MissionSerializer(serializers.ModelSerializer):
+    """Gorev. Sayimlar ve son kosu SALT OKUNUR ektir; yazma yuzeyi degismedi.
+
+    frame_counts, Frame.Status degerlerinin TAMAMINI anahtar olarak tasir --
+    sifir olan durum da anahtar olarak bulunur, boylece istemci eksik anahtar
+    icin savunma kodu yazmak zorunda kalmaz.
+    """
+
     created_by = serializers.PrimaryKeyRelatedField(read_only=True)
+    frame_count = serializers.SerializerMethodField()
+    frame_counts = serializers.SerializerMethodField()
+    latest_run = serializers.SerializerMethodField()
 
     class Meta:
         model = Mission
-        fields = ("id", "name", "description", "created_by", "created_at", "updated_at")
-        read_only_fields = ("id", "created_by", "created_at", "updated_at")
+        fields = (
+            "id",
+            "name",
+            "description",
+            "created_by",
+            "created_at",
+            "updated_at",
+            "frame_count",
+            "frame_counts",
+            "latest_run",
+        )
+        read_only_fields = (
+            "id",
+            "created_by",
+            "created_at",
+            "updated_at",
+            "frame_count",
+            "frame_counts",
+            "latest_run",
+        )
+
+    def get_frame_count(self, mission):
+        # Annotate edilmisse ek sorgu yok; edilmemisse (tekil kullanim) say.
+        sayi = getattr(mission, "frame_count_annotated", None)
+        if sayi is not None:
+            return sayi
+        return mission.frames.count()
+
+    def get_frame_counts(self, mission):
+        sayimlar = {durum: 0 for durum in Frame.Status.values}
+        for durum in Frame.Status.values:
+            annotated = getattr(mission, f"frames_{durum}_annotated", None)
+            if annotated is None:
+                sayimlar = None
+                break
+            sayimlar[durum] = annotated
+        if sayimlar is not None:
+            return sayimlar
+
+        sayimlar = {durum: 0 for durum in Frame.Status.values}
+        for satir in mission.frames.values("status").annotate(adet=Count("id")):
+            sayimlar[satir["status"]] = satir["adet"]
+        return sayimlar
+
+    def get_latest_run(self, mission):
+        # View prefetch ettiginde liste bellekte; etmediginde tek sorgu.
+        kosular = getattr(mission, "son_kosular", None)
+        if kosular is None:
+            kosu = (
+                mission.runs.select_related("model_version")
+                .order_by("-started_at", "-id")
+                .first()
+            )
+        else:
+            kosu = kosular[0] if kosular else None
+        if kosu is None:
+            return None
+        return MissionRunSummarySerializer(kosu).data
 
 
 class FrameSerializer(serializers.ModelSerializer):

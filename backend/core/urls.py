@@ -2,9 +2,11 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views import (
+    FrameImageView,
+    MissionDetailView,
     MissionFrameListCreateView,
     MissionListCreateView,
-    MissionRunCreateView,
+    MissionRunListCreateView,
     ModelVersionListView,
     RunDetailView,
     RunDetectionListView,
@@ -16,6 +18,7 @@ urlpatterns = [
     path("auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("missions/", MissionListCreateView.as_view(), name="mission-list"),
+    path("missions/<int:pk>/", MissionDetailView.as_view(), name="mission-detail"),
     path(
         "missions/<int:mission_id>/frames/",
         MissionFrameListCreateView.as_view(),
@@ -23,8 +26,13 @@ urlpatterns = [
     ),
     path(
         "missions/<int:mission_id>/runs/",
-        MissionRunCreateView.as_view(),
+        MissionRunListCreateView.as_view(),
         name="mission-runs",
+    ),
+    path(
+        "frames/<int:frame_id>/image/",
+        FrameImageView.as_view(),
+        name="frame-image",
     ),
     path("runs/<int:pk>/", RunDetailView.as_view(), name="run-detail"),
     path(

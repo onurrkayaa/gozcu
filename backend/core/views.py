@@ -1,4 +1,8 @@
+import mimetypes
+
 from django.db import connection, transaction
+from django.db.models import Count, Prefetch, Q
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
@@ -36,15 +40,57 @@ def health(request):
     return Response({"status": "ok", "database": "ok"})
 
 
+def gorev_querysetini_kur(user):
+    """Kullanicinin gorevleri; kare sayimlari ve kosulari onceden yuklenmis.
+
+    Sayimlar tek sorguda annotate edilir ve kosular prefetch edilir: gorev
+    sayisi arttikca sorgu sayisi artmasin (N+1 yok).
+    """
+    sayim_annotasyonlari = {
+        f"frames_{durum}_annotated": Count(
+            "frames", filter=Q(frames__status=durum), distinct=True
+        )
+        for durum in Frame.Status.values
+    }
+    return (
+        Mission.objects.filter(created_by=user)
+        .annotate(frame_count_annotated=Count("frames", distinct=True))
+        .annotate(**sayim_annotasyonlari)
+        .prefetch_related(
+            Prefetch(
+                "runs",
+                queryset=InferenceRun.objects.select_related("model_version").order_by(
+                    "-started_at", "-id"
+                ),
+                to_attr="son_kosular",
+            )
+        )
+    )
+
+
 class MissionListCreateView(generics.ListCreateAPIView):
     serializer_class = MissionSerializer
 
     def get_queryset(self):
         # Kullanici yalnizca kendi olusturdugu gorevleri gorur.
-        return Mission.objects.filter(created_by=self.request.user).order_by("-created_at")
+        return gorev_querysetini_kur(self.request.user).order_by("-created_at")
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+
+class MissionDetailView(generics.RetrieveAPIView):
+    """GET /api/missions/{id}/ -- tek gorev.
+
+    Arayuz gorev ayrintisina dogrudan gidildiginde (yeniden yukleme, yer imi)
+    gorevi listeden suzmek zorunda kalmasin diye var. Sahiplik queryset'te
+    suzuluyor: baskasinin gorevi 404.
+    """
+
+    serializer_class = MissionSerializer
+
+    def get_queryset(self):
+        return gorev_querysetini_kur(self.request.user)
 
 
 class MissionFrameListCreateView(generics.ListAPIView):
@@ -96,10 +142,29 @@ class ModelVersionListView(generics.ListAPIView):
     queryset = ModelVersion.objects.all().order_by("-created_at")
 
 
-class MissionRunCreateView(generics.GenericAPIView):
-    """POST /api/missions/{id}/runs/ -- taramayi baslatir."""
+class MissionRunListCreateView(generics.ListAPIView):
+    """GET  /api/missions/{id}/runs/ -- gorevin kosulari, yeniden eskiye.
+    POST /api/missions/{id}/runs/ -- taramayi baslatir.
 
-    serializer_class = RunCreateSerializer
+    Listeleme, arayuz sayfayi yeniden yukledikten sonra gorevin son/aktif
+    kosusunu bulabilsin diye eklendi; run_id'yi istemcide saklamak yeniden
+    yuklemede kaybolur.
+    """
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return RunCreateSerializer
+        return InferenceRunSerializer
+
+    def get_queryset(self):
+        mission = get_object_or_404(
+            Mission, pk=self.kwargs["mission_id"], created_by=self.request.user
+        )
+        return (
+            InferenceRun.objects.filter(mission=mission)
+            .select_related("model_version")
+            .order_by("-started_at", "-id")
+        )
 
     def post(self, request, mission_id):
         # Sahiplik queryset'te suzuluyor: baskasinin gorevi 404 doner, "var ama
@@ -187,3 +252,42 @@ class RunDetectionListView(generics.ListAPIView):
         # Skora gore azalan; esitlikte id ile kararli sirala ki sayfalama
         # sinirinda kayit tekrarlanmasin veya atlanmasin.
         return queryset.order_by("-score", "id")
+
+
+class FrameImageView(generics.GenericAPIView):
+    """GET /api/frames/{id}/image/ -- kareyi kimlik dogrulamasiyla verir.
+
+    Neden var: FrameSerializer.image alani MEDIA_URL altinda bir adres uretir,
+    ama o adres yalnizca DEBUG acikken ve KIMLIK DOGRULAMASIZ servis edilir --
+    adresi bilen herkes goruntuyu indirir. Operator arayuzunun goruntuye
+    erismesi icin token'i URL'ye koymak da cozum degil: adres gecmiste, log'da
+    ve Referer basliginda kalir. Bu uc, token'i Authorization basliginda alir.
+
+    Dosya yolu ISTEMCIDEN GELMEZ: yalnizca Frame birincil anahtari alinir,
+    dosya adi veritabanindaki kayittan okunur. Boylece yol gecisi (path
+    traversal) yuzeyi yoktur. Sahiplik queryset'te suzulur: baskasinin karesi
+    404 doner.
+    """
+
+    # Sema ureticileri serializer bekler; bu uc ikili veri dondurur.
+    serializer_class = None
+
+    def get(self, request, frame_id):
+        frame = get_object_or_404(
+            Frame, pk=frame_id, mission__created_by=request.user
+        )
+        try:
+            dosya = frame.image.open("rb")
+        except (FileNotFoundError, ValueError):
+            raise Http404("Kare dosyasi bulunamadi.")
+
+        # Icerik turu KAYITLI dosya adindan tahmin edilir; tahmin edilemezse
+        # tarayici turu kendisi tahmin etmesin diye genel ikili tur verilir.
+        tur, _ = mimetypes.guess_type(frame.image.name)
+        if tur is None or not tur.startswith("image/"):
+            tur = "application/octet-stream"
+
+        yanit = FileResponse(dosya, content_type=tur)
+        yanit["Content-Disposition"] = "inline"
+        yanit["X-Content-Type-Options"] = "nosniff"
+        return yanit
