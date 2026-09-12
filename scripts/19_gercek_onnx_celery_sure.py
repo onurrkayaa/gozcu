@@ -238,6 +238,7 @@ def kare_satirlari(kayitlar: list[dict], kare_bilgisi: dict, ozet: dict) -> list
             "soguk_baslangic": "evet" if kayit.get("soguk_baslangic") else "hayir",
             "oturum_kurulum_suresi": sayi_bicimle(kayit.get("oturum_kurulum_suresi", 0.0), 4),
             "surec_kare_sirasi": kayit.get("surec_kare_sirasi", ""),
+            "surec_id": kayit.get("surec_id", "olculmedi"),
             "karo_sayisi": kayit.get("karo_sayisi", ""),
             "tespit_sayisi": kayit.get("tespit_sayisi", 0),
             "hata_sinifi": kayit.get("hata_sinifi", ""),

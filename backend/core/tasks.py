@@ -8,6 +8,7 @@ yuzden process_frame idempotent olmak ZORUNDA; ikisi birbirine baglidir.
 """
 import json
 import logging
+import os
 import time
 
 from celery import chord, shared_task
@@ -269,6 +270,9 @@ def _process_frame_inner(run_id, frame_id):
             "soguk_baslangic": soguk,
             "oturum_kurulum_suresi": getattr(detector, "kurulum_suresi", 0.0) if soguk else 0.0,
             "surec_kare_sirasi": getattr(detector, "kare_sayisi", 0),
+            # Hangi isci sureci isledi: iki worker ayri surec oldugu icin soguk
+            # baslangic sayisi ancak bununla dogrulanabilir.
+            "surec_id": os.getpid(),
         },
     }
 
