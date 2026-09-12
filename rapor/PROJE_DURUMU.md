@@ -4,7 +4,7 @@ Bu dosya rapor gövdesinin parçası değildir; nerede olduğumuzu ve sıradaki 
 olduğunu tek yerde tutar. Buradaki her sayı bir çıktı dosyasından okunur ve yanında
 üreten CSV ile script yazar. Bir sayı ile bu dosya çelişirse **CSV kazanır**.
 
-Son güncelleme: Hafta 4 kapanışı ve Bölüm 5'in yazılması.
+Son güncelleme: Hafta 5 kapanışı — operatör arayüzü ve konum kaynağı kararı.
 
 ---
 
@@ -12,8 +12,11 @@ Son güncelleme: Hafta 4 kapanışı ve Bölüm 5'in yazılması.
 
 Hafta 0–3'te ölçüm altyapısı, taban çizgisi ve asenkron tarama hattı kuruldu.
 Hafta 4'te kendi verimizle model eğitildi, ONNX'e aktarıldı ve gerçek Celery
-hattına bağlandı. **Hafta 4 kapanmıştır** ve sonuçları `rapor/bolum_05.md`
-dosyasında raporlanmıştır; sıradaki ana iş Hafta 5'tir: operatör arayüzü.
+hattına bağlandı; **Hafta 4 kapanmıştır** ve sonuçları `rapor/bolum_05.md`
+dosyasında raporlanmıştır.
+
+Hafta 5'te operatör arayüzü kuruldu ve gerçek backend'e bağlandı.
+**Hafta 5 kapanmıştır** (ayrıntı: bölüm 2.12–2.14). Sıradaki ana iş Hafta 6'dır.
 
 ## 2. Ölçülenler
 
@@ -163,6 +166,104 @@ yükseldi. ONNX çıkarım süresi de arttı (medyan +%63,99, p95 +%143,64); art
 **sebebi bu deneyde ölçülmedi** ve görüntü okuma kazanımı olarak yazılamaz. Kuyruk bekleme farkı (medyan 845,4332 → 614,4650 sn) işçi zamanlamasına
 bağlıdır, kod kazanımı sayılmaz.
 
+### 2.12. Konum kaynağı taraması (BULGU — Hafta 5)
+
+Hafta 5'in ilk sorusu şuydu: arayüz bir göreve veya kareye konum yazabilir mi?
+Soru sayımla cevaplandı. Tarama çıkarım gerektirmediği için veri kümesinin
+tamamı tek koşuda incelendi.
+
+| Kaynak | İncelenen | EXIF bulunan | GPS bulunan | Enlem/boylam bulunan |
+|---|---|---|---|---|
+| HERIDAL train | 1106 | 0 | 0 | 0 |
+| HERIDAL valid | 316 | 0 | 0 | 0 |
+| HERIDAL test | 157 | 0 | 0 | 0 |
+| **HERIDAL toplam** | **1579** | **0** | **0** | **0** |
+| Veritabanı Frame kaydı | 494 | 0 | — | 0 |
+
+Kaynak: `reports/hafta5_gps_kaynak_karari.csv` (`scripts/22_konum_kaynagi_tara.py`)
+
+Veri kümesi Roboflow üzerinden yeniden dışa aktarıldığı için EXIF blokları
+kaynağında silinmiş. Dosya adları kaynak önekini taşır, konum taşımaz; depoda
+uçuş günlüğü veya koordinat tablosu da yok. Alım hattındaki EXIF okuma kodu
+(`core/services.extract_exif`) çalışıyor, okuyacak veri yok.
+
+### 2.13. Konum politikası (KARAR)
+
+Doğrulanabilir hiçbir koordinat kaynağı bulunmadığı için:
+
+- Arayüz **"Konum bilgisi mevcut değil"** gösterir ve nedenini yazar.
+- Kayıtta gerçek koordinat varsa gösterilir, kaynağı da belirtilir.
+- Dosya sırasından, karo satır/sütunundan veya görüntü pikselinden enlem/boylam
+  **türetilmez**. Böyle bir değer ölçüm değil uydurma olur.
+- Hafta 6'da demo haritası gerekirse koordinat hem veride hem arayüzde
+  **"Demo konumu — gerçek GPS değildir"** olarak etiketlenir.
+- Koordinat saklanmaya başlandığında değerin yanında **kaynağı** da saklanmalıdır
+  (exif / uçuş günlüğü / operatör beyanı / demo). Bu alan Hafta 5'te
+  **eklenmedi**, yalnızca not edildi.
+
+Gelecekteki kaynak önceliği: doğrulanmış EXIF GPS → uçuş günlüğü + zaman damgası
+eşleştirmesi → operatörün açıkça verdiği konum → açıkça etiketlenmiş demo →
+konum yok.
+
+### 2.14. Operatör arayüzü (Hafta 5)
+
+`frontend/` altında React + Vite + TypeScript arayüzü kuruldu; sunucu durumunu
+TanStack Query tutuyor, sayfa geçişi react-router ile. Arayüz dili Türkçe.
+Kapsam ifadesi ("Eğitim ve araştırma prototipidir. Tespitler operatör kararının
+yerine geçmez.") her sayfada görünür.
+
+Kurulan akış: giriş → görev listesi → görev oluşturma → kare ekleme → model
+seçimi ve tarama başlatma → ilerleme izleme → tespitlerin gerçek görüntü
+üzerinde incelenmesi → çıkış.
+
+**Gerçek API entegrasyonu.** Arayüzün kullandığı her uç koddan okunarak ve
+çalışan yerel API'ye kimlik doğrulamalı istek atılarak doğrulandı
+(`reports/hafta5_api_sozlesmesi.csv`, 14 uç). Frontend'in zorunlu akışı mevcut
+uçlarla tamamlanamadığı için üç uç eklendi; yeni veri modeli ve migration yok:
+
+- `GET /api/missions/{id}/` — görev ayrıntısına doğrudan gidilebilmesi için
+  (önceden 404'tü).
+- `GET /api/missions/{id}/runs/` — sayfa yenilendikten sonra görevin son/aktif
+  koşusunun bulunabilmesi için (önceden yalnızca POST kabul ediyordu).
+- `GET /api/frames/{id}/image/` — görüntünün kimlik doğrulamasıyla okunması
+  için. Gerekçe: `/media/` adresi DEBUG'ta kimlik doğrulamasız servis ediliyor,
+  üretimde hiç servis edilmiyor. Dosya yolu istemciden gelmez, yalnızca Frame
+  birincil anahtarı alınır.
+
+Görev serializer'ına kare sayımları ve son koşu özeti salt okunur alan olarak
+eklendi; mevcut alanların anlamı değişmedi.
+
+**Doğrulama.** Operatör akışı gerçek backend ve gerçek tarayıcı üzerinde uçtan
+uca yürütüldü: 34 kontrolün tamamı geçti
+(`reports/hafta5_frontend_dogrulama.csv`). Entegrasyon koşusu Model-512 ONNX ile
+2 karelik bir görevde yapıldı; koşu `done`, 2 kare tamamlandı, 0 başarısız.
+**Bu bir performans ölçümü değildir** — Hafta 4'ün 157 karelik süre koşusu
+tekrarlanmadı ve buradan hiçbir hız veya doğruluk sayısı türetilmedi.
+
+Test ve derleme sonuçları:
+
+| Kapı | Sonuç |
+|---|---|
+| Frontend testleri (Vitest) | 63 test, 7 dosya — geçti |
+| Frontend lint (ESLint) | 0 hata (5 react-refresh uyarısı) |
+| TypeScript denetimi | geçti |
+| Frontend üretim derlemesi | geçti |
+| Backend testleri (pytest) | 97 test — geçti (Hafta 4 sonunda 80 idi; 17'si yeni uçlar için) |
+| Script testleri (pytest) | 145 test — geçti |
+| Tarayıcı konsolu / ağ | uygulama kaynaklı hata yok |
+
+Ekran görüntüleri: `rapor/gorseller/hafta5/`
+
+**Arayüzün konum gösterme politikası** bölüm 2.13'teki karardır ve testle
+korunuyor: GPS yokken arayüz koordinat üretmiyor, tespitler "kesin insan" diye
+adlandırılmıyor.
+
+**Görüntüleme eşiği.** Tespit inceleme ekranındaki kaydırıcı yalnızca ekranda
+çizilen kutuları süzer; modeli yeniden çalıştırmaz ve **bir değerlendirme
+metriği değildir**. Başlangıç değeri sabit yazılmaz, koşunun kendi
+`conf_threshold` değerinden gelir. Kutular 0,05 tabanıyla saklandığı için tek
+bir taramadan farklı eşikler yeniden tarama olmadan sorulabilir.
+
 ## 3. Açık kısıtlar
 
 - **Kaynak aşinalığı:** Test hedeflerinin 939/970'i ZRI kaynağından ve ZRI eğitimde de
@@ -178,13 +279,28 @@ bağlıdır, kod kazanımı sayılmaz.
 - **Model-320 yok:** 2x2 deney matrisinin dördüncü hücresi hâlâ boş.
 - **Taban çizgisinin FP eğrisi** yalnızca üç eşikte ölçülü (`reports/esik_taramasi.csv`
   içinde `fp_durumu` sütunu hangi noktanın ölçülü olduğunu söyler).
+- **Konum verisi yok:** Elimizdeki 1579 görüntünün hiçbirinde EXIF GPS yok, bu
+  yüzden arayüz konum gösteremiyor ve harita kurulamıyor (bölüm 2.12–2.13).
+- **JWT localStorage'da:** Backend HTTP-only çerez desteklemediği için token
+  tarayıcı deposunda duruyor. Bir XSS açığı oturumun çalınması demektir; kabul
+  edilen prototip sınırı budur ve `frontend/README.md` içinde yazılıdır.
+- **Tarama iptali/yeniden başlatma yok:** Backend'de böyle bir uç yok, arayüz de
+  uydurma düğme göstermiyor.
+- **Arayüzde listeler ilk sayfayla sınırlı:** Kare listesi ve bir karedeki tespit
+  listesi 20 kayıtla gösteriliyor; toplam sayı ayrıca yazılıyor.
 
 ## 4. Yapılmayanlar (yapılmış gibi gösterilmez)
 
 - Model-320 eğitilmedi, ölçülmedi; `agirliklar/` altında yalnızca Model-512 dosyaları var.
 - ONNX üzerinde doğruluk kaybı dışında bir hız optimizasyonu (batch, paralellik, quantize)
   denenmedi.
-- Operatöre dönük arayüz yok; hat şu an yalnızca API ve kuyruk seviyesinde çalışıyor.
+- Harita gösterimi yok; gösterilecek gerçek koordinat olmadığı için Leaflet
+  bilinçli olarak eklenmedi.
+- Arayüzde tespit doğrulama/işaretleme (review) akışı yok; operatör adayları
+  görüyor ama kararını sisteme yazamıyor. Hafta 6 işi.
+- Uçtan uca (Playwright vb.) otomatik tarayıcı test paketi kurulmadı; tarayıcı
+  doğrulaması elle yürütüldü ve `reports/hafta5_frontend_dogrulama.csv` dosyasına
+  kaydedildi.
 
 ## 5. Sıradaki işler
 
@@ -196,19 +312,20 @@ bağlıdır, kod kazanımı sayılmaz.
 4. ≥ 80 px bandındaki düşüşün kenar kuralıyla nedensel bağı (eğitim verisi tarafı ölçüldü,
    model tarafı ölçülmedi).
 
-### 5.2. Bir sonraki adımda fiilen yapılacak iş (Hafta 5)
+### 5.2. Bir sonraki adımda fiilen yapılacak iş (Hafta 6)
 
-Operatörün sistemi fiilen kullanabildiği yüzü kurmak: React, Vite ve TypeScript ile
-arayüz, sunucu durumu için TanStack Query. Akış: görüntü yükleme, görev oluşturma, tarama
-başlatma, ilerleme takibi ve tespitlerin görüntü üzerinde eşik kaydırılarak incelenmesi.
-Arka uçta gereken her şey hazır — tespitler sabit bir depolama tabanıyla saklanıyor ve eşik
-okuma anında uygulanıyor, yani arayüzün eşik değiştirmesi yeni bir tarama gerektirmiyor.
+Hafta 5 kapandı: operatör arayüzü kuruldu, gerçek API'ye bağlandı ve beş kapının
+tamamı geçildi (bölüm 2.14).
 
-Hafta 5'in ilk kararı konum kaynağıdır. Kullanılan veri kümesindeki görüntülerin EXIF
-alanlarında koordinat yok; kare kayıtlarının konum alanları boş kalıyor. Boş alana gerçek
-koordinat varmış gibi değer yazılmayacak. Ya gerçek uçuş kaydı olan bir veri kullanılacak
-ya da arayüz gösterimi için üretilen koordinatlar **demo verisi** olarak açıkça
-etiketlenecek.
+Hafta 6'nın işi, operatörün **kararını** sisteme yazabilmesidir. Şu an arayüz
+adayları gösteriyor ama operatörün "bu gerçek" / "bu değil" yargısı hiçbir yere
+kaydedilmiyor. Bu, Review ve Finding kayıtlarını, karar geçmişi için AuditLog'u
+ve görev üyeliği (MissionMember) ile yetkilendirmeyi gerektiriyor.
+
+Yanına iki iş daha düşüyor: örtüşen karolardan gelen adayların tekilleştirilmesi
+(Union-Find) ve konum tarafı. Konum için karar zaten verili (bölüm 2.13) — harita
+kurulacaksa koordinat kaynağı alanı önce eklenmeli, demo koordinat açıkça
+etiketlenmeli ve gerçek GPS gibi sunulmamalıdır.
 
 Bölüm 5 yazıldı (`rapor/bolum_05.md`): Hafta 4'ün dışa aktarım, motor eşdeğerliği, gerçek
 süre, dayanıklılık ve tek-okuma sonuçlarını kaynak CSV'leriyle birlikte sunuyor.
