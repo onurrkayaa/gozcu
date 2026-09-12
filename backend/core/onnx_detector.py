@@ -93,6 +93,11 @@ class OnnxDedektor(Detector):
         self.kurulum_suresi = time.perf_counter() - baslangic
         self.kare_sayisi = 0
         self.sayaclar = {"goruntu_okuma": 0.0, "cikarim": 0.0, "son_islem": 0.0}
+        # Kare basina TEK okuma: son okunan kaynak goruntu bellekte tutulur ve
+        # karolar ondan kesilir. Ayni kareyi 80 karo icin 80 kez diskten
+        # cozmek, olcumde cikarimla ayni agirlikta bir maliyet cikmisti.
+        self._acik_yol = None
+        self._acik_goruntu = None
 
         girdi = self.oturum.get_inputs()[0]
         self.girdi_adi = girdi.name
@@ -182,23 +187,52 @@ class OnnxDedektor(Detector):
         return sonuc
 
     def olcum_sifirla(self):
-        """Yeni bir kareye baslarken asama sayaclarini sifirlar ve kare sayar."""
+        """Yeni bir kareye baslarken asama sayaclarini sifirlar ve kare sayar.
+
+        Onbellekteki kaynak goruntu de birakilir: isci sureci kareler arasinda
+        36 MB'lik bir diziyi tutmasin."""
         self.kare_sayisi += 1
         self.sayaclar = {ad: 0.0 for ad in self.sayaclar}
+        self._acik_yol = None
+        self._acik_goruntu = None
 
     def olcum_al(self) -> dict:
         """Bu karede biriken asama surelerinin kopyasi."""
         return dict(self.sayaclar)
 
-    def detect(self, image_path, tile):
-        """Detector arayuzu: karoyu goruntuden kesip tahmin eder."""
+    def _kaynagi_yukle(self, image_path):
+        """Kaynak goruntuyu gerekiyorsa bir kez okur ve RGB dizisi olarak tutar.
+
+        Ayni yol tekrar gelirse disk okunmaz. Dosya nesnesi context manager ile
+        hemen kapanir; bellekte yalnizca diziyi tutariz."""
         import numpy as np
         from PIL import Image
 
+        yol = str(image_path)
+        if self._acik_yol == yol and self._acik_goruntu is not None:
+            return self._acik_goruntu
+        with Image.open(yol) as gorsel:
+            dizi = np.asarray(gorsel.convert("RGB"))
+        # Onceki kareyi birakmadan yenisini tutmayalim.
+        self._acik_goruntu = None
+        self._acik_yol = yol
+        self._acik_goruntu = dizi
+        return dizi
+
+    def _karo_dizisi(self, image_path, tile):
+        """Karonun piksellerini, kaynagi kare basina tek kez okuyarak dondurur."""
         _, _, x1, y1, x2, y2 = tile
+        kaynak = self._kaynagi_yukle(image_path)
+        # Dilim bir GORUNUM: kopya cikarilmaz, tum goruntu karo basina
+        # cogaltilmaz. karo_tahmin_et zaten kendi tensorunu uretiyor.
+        return kaynak[y1:y2, x1:x2]
+
+    def detect(self, image_path, tile):
+        """Detector arayuzu: karoyu goruntuden kesip tahmin eder."""
         okuma_basi = time.perf_counter()
-        with Image.open(image_path) as gorsel:
-            karo = np.asarray(gorsel.convert("RGB").crop((x1, y1, x2, y2)))
+        karo = self._karo_dizisi(image_path, tile)
+        # Alanin anlami korunuyor: kare boyunca gecen TOPLAM goruntu yukleme
+        # (ve karo kesme) maliyeti. Artik ilk karo okur, digerleri bellekten alir.
         self.sayaclar["goruntu_okuma"] += time.perf_counter() - okuma_basi
         return self.karo_tahmin_et(karo)
 
