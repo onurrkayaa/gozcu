@@ -521,15 +521,16 @@ koşmak ikisinde de 240 pikselik adım verir. Bu deney yapılmadı.
 
 #### 4.10.1 Ölçüm ve analiz tarafında açık kalanlar
 
-Model-320 hiç eğitilmedi ve ölçülmedi; 2x2 matrisin dördüncü hücresi boş. Eğitim ve test
-bölümlerinin kaynak öneki kesişimi sayısal olarak çıkarılmadı; ZRI'nin iki bölümde birden
-bulunduğunu biliyorum ama bunun etkisini ölçmedim. ≥ 80 px bandındaki düşüşün %60 kenar
-kuralıyla ilişkisi hipotez halinde. Adım sabitlenerek yapılacak karo boyutu deneyi
-yapılmadı. "Belirsiz karolar kaç **benzersiz hedefi** etkiliyor" sorusunun doğru metriği
-tanımlandı ama ölçülmedi. Taban çizgisinin tam eşik eğrisi çıkarılmadı; tabanın FP
-tarafı yalnızca üç noktada ölçülü. conf 0,53 için yükseklik bandı kırılımı türetilmedi.
-NMS öncesi aday tahmin sayısı hiçbir koşuda kaydedilmedi, bu yüzden hız farkının
-mekanizması açık.
+Model-320 hiç eğitilmedi ve ölçülmedi; 2x2 matrisin dördüncü hücresi boş. Bu bölüm
+kapanırken şu üç ölçüm de açıktı: eğitim ve test bölümlerinin kaynak öneki kesişimi
+sayısal olarak çıkarılmamıştı (ZRI'nin iki bölümde birden bulunduğunu biliyordum ama
+etkisini ölçmemiştim), ≥ 80 px bandındaki düşüşün %60 kenar kuralıyla ilişkisi hipotez
+halindeydi ve adım sabitlenerek yapılacak karo boyutu deneyi yapılmamıştı. "Belirsiz
+karolar kaç **benzersiz hedefi** etkiliyor" sorusunun doğru metriği de tanımlanmış ama
+ölçülmemişti. Bu dört ölçümü sonraki adımda yaptım; sonuçları Bölüm 5'te sunuyorum.
+Taban çizgisinin tam eşik eğrisi hâlâ çıkarılmadı; tabanın FP tarafı yalnızca üç noktada
+ölçülü. conf 0,53 için yükseklik bandı kırılımı türetilmedi. NMS öncesi aday tahmin
+sayısı hiçbir koşuda kaydedilmedi, bu yüzden hız farkının mekanizması açık.
 
 #### 4.10.2 Bir sonraki adımda fiilen yapılacak iş
 
