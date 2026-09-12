@@ -512,3 +512,133 @@ tbody tr:hover {
   margin-bottom: 0.35rem;
   font-size: 0.88rem;
 }
+
+/* --- Hafta 6: harita, inceleme, üyelik ---------------------------------- */
+
+/*
+ * Harita kabının yüksekliği AÇIKÇA tanımlı olmalı: Leaflet kapsayıcısının
+ * yüksekliğini kendisi hesaplamaz, sıfır yükseklikli bir kapta sessizce
+ * görünmez olur.
+ */
+.harita-kabi {
+  height: 460px;
+  width: 100%;
+  border: 1px solid var(--kenar-belirgin);
+  border-radius: var(--yaricap);
+  overflow: hidden;
+}
+
+@media (max-width: 700px) {
+  .harita-kabi {
+    height: 320px;
+  }
+}
+
+/* Demo uyarısı haritanın üstünde kalıcı durur; kaydırmayla kaybolmaz. */
+.bildirim.demo-uyarisi {
+  border-color: var(--uyari);
+  background: #3a2f16;
+  color: #f4e0b0;
+}
+
+/* Leaflet balonu koyu zeminde okunur kalsın. */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--yuzey);
+  color: var(--metin);
+}
+
+.harita-balon dl {
+  margin: 0.4rem 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.5rem;
+  font-size: 0.82rem;
+}
+
+.harita-balon dt {
+  color: var(--metin-sonuk);
+}
+
+.harita-balon dd {
+  margin: 0;
+}
+
+.balon-demo {
+  margin-top: 0.3rem;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid var(--uyari);
+  border-radius: 4px;
+  color: #f4e0b0;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+/* Karolar yüklenemezse Leaflet'in gri zemini koyu temada sırıtmasın. */
+.leaflet-container {
+  background: var(--yuzey-2);
+}
+
+/* Model çıktısı ile operatör kararı görsel olarak ayrılır. */
+.karar-serisi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.karar-dugmesi.secili[data-karar="accepted"] {
+  border-color: var(--basari);
+  color: var(--basari);
+  font-weight: 700;
+}
+
+.karar-dugmesi.secili[data-karar="rejected"] {
+  border-color: var(--hata);
+  color: var(--hata);
+  font-weight: 700;
+}
+
+.karar-dugmesi.secili[data-karar="uncertain"] {
+  border-color: var(--uyari);
+  color: var(--uyari);
+  font-weight: 700;
+}
+
+.operator-karari {
+  border-left: 3px solid var(--vurgu);
+  padding-left: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.salt-okunur-notu {
+  color: var(--metin-sonuk);
+  font-size: 0.83rem;
+  font-style: italic;
+}
+
+.denetim-satiri {
+  border-bottom: 1px solid var(--kenar);
+  padding: 0.5rem 0;
+}
+
+.denetim-degisiklik {
+  color: var(--metin-sonuk);
+  font-size: 0.82rem;
+}
+
+/* Sekmeler */
+.sekme-serisi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--kenar);
+  padding-bottom: 0.5rem;
+}
+
+.sekme.etkin {
+  background: var(--vurgu-koyu);
+  border-color: var(--vurgu);
+  color: #fff;
+  font-weight: 600;
+}

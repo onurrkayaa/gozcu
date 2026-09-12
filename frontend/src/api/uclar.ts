@@ -7,7 +7,16 @@
 
 import { apiIstegi, istekYap } from "./istemci";
 import type {
+  Bulgu,
+  BulguDurumu,
+  DenetimKaydi,
   Gorev,
+  Inceleme,
+  Karar,
+  KonumKaynagi,
+  KumeYaniti,
+  Rol,
+  Uyelik,
   Kare,
   KareYuklemeSonucu,
   Kosu,
@@ -129,4 +138,102 @@ export function tespitleriGetir(
   if (secenekler.minSkor !== undefined) parametreler.set("min_score", String(secenekler.minSkor));
   parametreler.set("page", String(secenekler.sayfa ?? 1));
   return apiIstegi<SayfaliYanit<Tespit>>(`/api/runs/${kosuId}/detections/?${parametreler}`);
+}
+
+// --- Hafta 6 --------------------------------------------------------------
+
+export function uyeleriGetir(gorevId: number): Promise<SayfaliYanit<Uyelik>> {
+  return apiIstegi<SayfaliYanit<Uyelik>>(`/api/missions/${gorevId}/members/`);
+}
+
+export function uyeEkle(gorevId: number, kullaniciAdi: string, rol: Rol): Promise<Uyelik> {
+  return apiIstegi<Uyelik>(`/api/missions/${gorevId}/members/`, {
+    yontem: "POST",
+    govde: { username: kullaniciAdi, role: rol },
+  });
+}
+
+export function uyeRolunuGuncelle(
+  gorevId: number,
+  uyelikId: number,
+  rol: Rol,
+): Promise<Uyelik> {
+  return apiIstegi<Uyelik>(`/api/missions/${gorevId}/members/${uyelikId}/`, {
+    yontem: "PATCH",
+    govde: { role: rol },
+  });
+}
+
+export function uyeCikar(gorevId: number, uyelikId: number): Promise<void> {
+  return apiIstegi<void>(`/api/missions/${gorevId}/members/${uyelikId}/`, {
+    yontem: "DELETE",
+  });
+}
+
+export function kosuIncelemeleriniGetir(kosuId: number): Promise<SayfaliYanit<Inceleme>> {
+  return apiIstegi<SayfaliYanit<Inceleme>>(`/api/runs/${kosuId}/reviews/`);
+}
+
+export function incelemeYaz(
+  tespitId: number,
+  karar: Karar,
+  not: string,
+): Promise<Inceleme> {
+  return apiIstegi<Inceleme>(`/api/detections/${tespitId}/reviews/`, {
+    yontem: "PUT",
+    govde: { decision: karar, note: not },
+  });
+}
+
+export function bulgulariGetir(gorevId: number): Promise<SayfaliYanit<Bulgu>> {
+  return apiIstegi<SayfaliYanit<Bulgu>>(`/api/missions/${gorevId}/findings/`);
+}
+
+export interface BulguGovdesi {
+  title?: string;
+  note?: string;
+  status?: BulguDurumu;
+  latitude?: number | null;
+  longitude?: number | null;
+  location_source: KonumKaynagi;
+  location_note?: string;
+  detection?: number | null;
+}
+
+export function bulguOlustur(gorevId: number, govde: BulguGovdesi): Promise<Bulgu> {
+  return apiIstegi<Bulgu>(`/api/missions/${gorevId}/findings/`, {
+    yontem: "POST",
+    govde,
+  });
+}
+
+export function bulguGuncelle(bulguId: number, govde: BulguGovdesi): Promise<Bulgu> {
+  return apiIstegi<Bulgu>(`/api/findings/${bulguId}/`, { yontem: "PATCH", govde });
+}
+
+export function bulguSil(bulguId: number): Promise<void> {
+  return apiIstegi<void>(`/api/findings/${bulguId}/`, { yontem: "DELETE" });
+}
+
+export function kumeleriGetir(gorevId: number): Promise<KumeYaniti> {
+  return apiIstegi<KumeYaniti>(`/api/missions/${gorevId}/clusters/`);
+}
+
+export function kumelemeCalistir(
+  gorevId: number,
+  esikMetre: number,
+): Promise<KumeYaniti & { kume_sayisi: number; kumelenen_bulgu: number }> {
+  return apiIstegi(`/api/missions/${gorevId}/clusters/`, {
+    yontem: "POST",
+    govde: { esik_metre: esikMetre },
+  });
+}
+
+export function denetimKayitlariniGetir(
+  gorevId: number,
+  sayfa = 1,
+): Promise<SayfaliYanit<DenetimKaydi>> {
+  return apiIstegi<SayfaliYanit<DenetimKaydi>>(
+    `/api/missions/${gorevId}/audit/?page=${sayfa}`,
+  );
 }

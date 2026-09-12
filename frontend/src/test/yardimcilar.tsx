@@ -112,6 +112,7 @@ export function ornekGorev(ekler: Partial<Gorev> = {}): Gorev {
     frame_count: 2,
     frame_counts: { pending: 0, queued: 0, processing: 0, done: 2, failed: 0 },
     latest_run: null,
+    my_role: "owner",
     ...ekler,
   };
 }

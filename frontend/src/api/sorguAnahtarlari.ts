@@ -23,4 +23,12 @@ export const sorguAnahtarlari = {
     ["tespitler", kosuId, kareId ?? "tumu", minSkor] as const,
 
   kareGoruntusu: (kareId: number) => ["kare-goruntusu", kareId] as const,
+
+  // --- Hafta 6 ---
+  uyeler: (gorevId: number) => ["uyeler", gorevId] as const,
+  incelemeler: (kosuId: number) => ["incelemeler", kosuId] as const,
+  bulgular: (gorevId: number) => ["bulgular", gorevId] as const,
+  kumeler: (gorevId: number) => ["kumeler", gorevId] as const,
+  denetim: (gorevId: number, sayfa: number) => ["denetim", gorevId, sayfa] as const,
+  denetimiGecersizKil: (gorevId: number) => ["denetim", gorevId] as const,
 };

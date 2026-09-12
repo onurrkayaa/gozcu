@@ -23,6 +23,9 @@ import type { Kosu } from "../api/tipler";
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** Uygulamadaki yoklama aralığı; test bekleme süreleri buradan türer. */
+const YOKLAMA_ARALIGI_TESTI = 1000;
+
 function ayrintiSayfasi() {
   return (
     <Routes>
@@ -153,10 +156,15 @@ describe("yoklama (polling)", () => {
     // Terminal duruma ulaşılsın.
     expect(await screen.findByText("Tamamlandı", {}, { timeout: 8000 })).toBeInTheDocument();
 
+    // Yoklamanın durduğunu, duvar saatiyle beklemek yerine iki ayrı
+    // yoklama aralığı boyunca sayaç sabit kalıyor mu diye ölçüyoruz. Sabit
+    // süre beklemek, makine yük altındayken (paralel test koşusu) testi
+    // kırılgan yapıyordu; buradaki kontrol yükten bagimsiz.
     const durmaAnindakiSayi = kosuIstegiSayisi;
-    // Yoklama aralığından uzun bir süre bekle: yeni istek gitmemeli.
-    await new Promise((coz) => setTimeout(coz, 2600));
-    expect(kosuIstegiSayisi).toBe(durmaAnindakiSayi);
+    for (let tur = 0; tur < 3; tur += 1) {
+      await new Promise((coz) => setTimeout(coz, YOKLAMA_ARALIGI_TESTI));
+      expect(kosuIstegiSayisi).toBe(durmaAnindakiSayi);
+    }
   }, 15000);
 
   it("koşu sürerken ilerleme gerçek kare sayılarından hesaplanır", async () => {

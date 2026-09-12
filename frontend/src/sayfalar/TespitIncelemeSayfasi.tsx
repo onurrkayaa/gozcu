@@ -4,7 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 
 import { hataMetni } from "../api/istemci";
 import { sorguAnahtarlari } from "../api/sorguAnahtarlari";
-import { kareleriGetir, kosuGetir, tespitleriGetir } from "../api/uclar";
+import {
+  gorevGetir,
+  kareleriGetir,
+  kosuGetir,
+  kosuIncelemeleriniGetir,
+  tespitleriGetir,
+} from "../api/uclar";
 import type { Tespit } from "../api/tipler";
 import {
   BosDurum,
@@ -15,6 +21,8 @@ import {
 } from "../bilesenler/durumlar";
 import { KonumBilgisi } from "../bilesenler/KonumBilgisi";
 import { TespitKatmani } from "../bilesenler/TespitKatmani";
+import { IncelemePaneli } from "../bilesenler/IncelemePaneli";
+import { useOturum } from "../kimlik/useOturum";
 
 /**
  * Görüntüleme eşiğinin alt sınırı.
@@ -64,6 +72,7 @@ function TespitAyrintisi({ tespit }: { tespit: Tespit }) {
 export function TespitIncelemeSayfasi() {
   const { kosuId: hamKosuId } = useParams();
   const kosuId = Number(hamKosuId);
+  const { kullaniciAdi } = useOturum();
 
   const [seciliKareId, setSeciliKareId] = useState<number | null>(null);
   const [seciliTespitId, setSeciliTespitId] = useState<number | null>(null);
@@ -84,6 +93,21 @@ export function TespitIncelemeSayfasi() {
   });
 
   const kareler = useMemo(() => kareSorgusu.data?.results ?? [], [kareSorgusu.data]);
+
+  // Rol, hangi denetimlerin gösterileceğini belirler; yetkiyi backend uygular.
+  const gorevSorgusu = useQuery({
+    queryKey: sorguAnahtarlari.gorev(gorevId ?? -1),
+    queryFn: () => gorevGetir(gorevId as number),
+    enabled: gorevId !== undefined,
+  });
+
+  // Koşudaki bütün incelemeler tek istekte gelir; her tespit için ayrı istek
+  // atmak seçim değiştikçe gereksiz trafik üretirdi.
+  const incelemeSorgusu = useQuery({
+    queryKey: sorguAnahtarlari.incelemeler(kosuId),
+    queryFn: () => kosuIncelemeleriniGetir(kosuId),
+    enabled: Number.isFinite(kosuId),
+  });
 
   // İlk kare kendiliğinden seçilsin; kullanıcı boş ekranla karşılaşmasın.
   useEffect(() => {
@@ -292,7 +316,20 @@ export function TespitIncelemeSayfasi() {
             {seciliTespit && (
               <div style={{ marginTop: "0.8rem" }}>
                 <h3>Seçili aday</h3>
+                <p className="kucuk sonuk" style={{ marginTop: 0 }}>
+                  Modelin çıktısı:
+                </p>
                 <TespitAyrintisi tespit={seciliTespit} />
+
+                <IncelemePaneli
+                  kosuId={kosuId}
+                  tespit={seciliTespit}
+                  incelemeler={(incelemeSorgusu.data?.results ?? []).filter(
+                    (inceleme) => inceleme.detection === seciliTespit.id,
+                  )}
+                  rol={gorevSorgusu.data?.my_role ?? null}
+                  kullaniciAdi={kullaniciAdi}
+                />
               </div>
             )}
 

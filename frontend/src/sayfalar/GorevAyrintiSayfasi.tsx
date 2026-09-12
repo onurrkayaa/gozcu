@@ -17,6 +17,10 @@ import {
 } from "../bilesenler/durumlar";
 import { KareEkleme } from "./KareEkleme";
 import { TaramaBaslatma } from "./TaramaBaslatma";
+import { BulguPaneli } from "./BulguPaneli";
+import { DenetimGecmisi } from "./DenetimGecmisi";
+import { UyeYonetimi } from "./UyeYonetimi";
+import { yazabilirMi } from "../api/tipler";
 
 /** Aktif koşu sürerken yoklama aralığı. */
 const YOKLAMA_ARALIGI_MS = 2000;
@@ -92,6 +96,9 @@ export function GorevAyrintiSayfasi() {
   const gorevId = Number(hamGorevId);
   const sorguIstemcisi = useQueryClient();
   const [izlenenKosuId, setIzlenenKosuId] = useState<number | null>(null);
+  const [sekme, setSekme] = useState<"tarama" | "bulgular" | "uyeler" | "gecmis">(
+    "tarama",
+  );
 
   const gorevSorgusu = useQuery({
     queryKey: sorguAnahtarlari.gorev(gorevId),
@@ -160,6 +167,8 @@ export function GorevAyrintiSayfasi() {
 
   const gorev = gorevSorgusu.data;
   const kareler = kareSorgusu.data?.results ?? [];
+  const rol = gorev.my_role;
+  const yazabilir = yazabilirMi(rol);
 
   return (
     <div>
@@ -198,16 +207,51 @@ export function GorevAyrintiSayfasi() {
         </div>
       </div>
 
+      <nav className="sekme-serisi" aria-label="Görev bölümleri">
+        {([
+          ["tarama", "Tarama ve kareler"],
+          ["bulgular", "Bulgular ve harita"],
+          ["uyeler", "Üyeler"],
+          ["gecmis", "Faaliyet geçmişi"],
+        ] as const).map(([anahtar, etiket]) => (
+          <button
+            key={anahtar}
+            type="button"
+            className={`sekme${sekme === anahtar ? " etkin" : ""}`}
+            aria-current={sekme === anahtar ? "page" : undefined}
+            onClick={() => setSekme(anahtar)}
+          >
+            {etiket}
+          </button>
+        ))}
+      </nav>
+
+      {sekme === "bulgular" && <BulguPaneli gorevId={gorevId} rol={rol} />}
+      {sekme === "uyeler" && <UyeYonetimi gorevId={gorevId} rol={rol} />}
+      {sekme === "gecmis" && <DenetimGecmisi gorevId={gorevId} />}
+
+      {sekme === "tarama" && (
+        <>
       {kosu && <KosuIlerlemesi kosu={kosu} />}
 
-      <TaramaBaslatma
-        gorevId={gorevId}
-        kareSayisi={gorev.frame_count}
-        taramaSuruyor={taramaSuruyor}
-        baslatildi={(kosuId) => setIzlenenKosuId(kosuId)}
-      />
+      {yazabilir && (
+        <TaramaBaslatma
+          gorevId={gorevId}
+          kareSayisi={gorev.frame_count}
+          taramaSuruyor={taramaSuruyor}
+          baslatildi={(kosuId) => setIzlenenKosuId(kosuId)}
+        />
+      )}
 
-      <KareEkleme gorevId={gorevId} />
+      {yazabilir && <KareEkleme gorevId={gorevId} />}
+      {!yazabilir && (
+        <div className="kart">
+          <p className="salt-okunur-notu" data-testid="kare-salt-okunur">
+            Bu görevde salt okunur yetkiniz var; kare ekleyemez veya tarama
+            başlatamazsınız.
+          </p>
+        </div>
+      )}
 
       <div className="kart">
         <h2>Kareler</h2>
@@ -265,6 +309,8 @@ export function GorevAyrintiSayfasi() {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

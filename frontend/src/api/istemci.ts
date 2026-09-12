@@ -169,7 +169,7 @@ export function yenilemeDurumunuSifirla(): void {
 }
 
 interface IstekSecenekleri {
-  yontem?: "GET" | "POST";
+  yontem?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   govde?: unknown;
   /** FormData gönderilirken Content-Type'ı tarayıcı kendisi koyar. */
   formVerisi?: FormData;
