@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import ast
 import threading
+import time
 from pathlib import Path
 
 from .detector import Detector
@@ -77,6 +78,7 @@ class OnnxDedektor(Detector):
             raise ModelYuklenemedi(f"ONNX modeli bulunamadi: {self.model_yolu}")
 
         self.conf_esigi = float(conf_esigi)
+        baslangic = time.perf_counter()
         try:
             self.oturum = ort.InferenceSession(
                 str(self.model_yolu), providers=list(saglayicilar)
@@ -85,6 +87,12 @@ class OnnxDedektor(Detector):
             raise ModelYuklenemedi(
                 f"ONNX oturumu acilamadi ({self.model_yolu}): {hata}"
             ) from hata
+        # Oturumun ilk kurulumu (soguk baslangic) ayri tutulur: ilk karenin
+        # suresi bu yuzden digerlerinden buyuktur ve ortalamaya sessizce
+        # karistirilmamalidir.
+        self.kurulum_suresi = time.perf_counter() - baslangic
+        self.kare_sayisi = 0
+        self.sayaclar = {"goruntu_okuma": 0.0, "cikarim": 0.0, "son_islem": 0.0}
 
         girdi = self.oturum.get_inputs()[0]
         self.girdi_adi = girdi.name
@@ -134,7 +142,10 @@ class OnnxDedektor(Detector):
         tensor = np.ascontiguousarray(
             tuval.transpose(2, 0, 1)[None].astype(np.float32) / 255.0
         )
+        cikarim_basi = time.perf_counter()
         ham = self.oturum.run(self.cikti_adlari, {self.girdi_adi: tensor})[0]
+        self.sayaclar["cikarim"] += time.perf_counter() - cikarim_basi
+        son_islem_basi = time.perf_counter()
 
         # (1, 4 + sinif, aday) -> (aday, 4 + sinif)
         adaylar = ham[0].T
@@ -142,6 +153,7 @@ class OnnxDedektor(Detector):
         secilen = adaylar[skorlar > self.conf_esigi]
         skorlar = skorlar[skorlar > self.conf_esigi]
         if len(secilen) == 0:
+            self.sayaclar["son_islem"] += time.perf_counter() - son_islem_basi
             return []
 
         cx, cy, g, y = secilen[:, 0], secilen[:, 1], secilen[:, 2], secilen[:, 3]
@@ -166,7 +178,17 @@ class OnnxDedektor(Detector):
             if x2 <= x1 or y2 <= y1:
                 continue
             sonuc.append((x1, y1, x2, y2, skor))
+        self.sayaclar["son_islem"] += time.perf_counter() - son_islem_basi
         return sonuc
+
+    def olcum_sifirla(self):
+        """Yeni bir kareye baslarken asama sayaclarini sifirlar ve kare sayar."""
+        self.kare_sayisi += 1
+        self.sayaclar = {ad: 0.0 for ad in self.sayaclar}
+
+    def olcum_al(self) -> dict:
+        """Bu karede biriken asama surelerinin kopyasi."""
+        return dict(self.sayaclar)
 
     def detect(self, image_path, tile):
         """Detector arayuzu: karoyu goruntuden kesip tahmin eder."""
@@ -174,8 +196,10 @@ class OnnxDedektor(Detector):
         from PIL import Image
 
         _, _, x1, y1, x2, y2 = tile
+        okuma_basi = time.perf_counter()
         with Image.open(image_path) as gorsel:
             karo = np.asarray(gorsel.convert("RGB").crop((x1, y1, x2, y2)))
+        self.sayaclar["goruntu_okuma"] += time.perf_counter() - okuma_basi
         return self.karo_tahmin_et(karo)
 
 

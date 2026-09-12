@@ -158,3 +158,9 @@ DETECTION_STORE_FLOOR = 0.05
 # cunku agirlik dosyasi depoya girmez ve konteynerde baska bir yere baglanir
 # (docker-compose: ./agirliklar -> /models, salt okunur).
 ONNX_MODEL_PATH = env("ONNX_MODEL_PATH", "")
+
+# Asama bazinda sure olcumu. Bos birakilirsa (varsayilan) hicbir olcum yazilmaz
+# ve gorev normal calisir. Bir yol verilirse process_frame her KARE icin tek bir
+# JSON satiri ekler -- karo basina log yazilmaz. Olcum kosulari icin
+# scripts/19_gercek_onnx_celery_sure.py bu dosyayi okur.
+TASK_TIMING_LOG = env("TASK_TIMING_LOG", "")

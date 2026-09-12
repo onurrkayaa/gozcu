@@ -67,6 +67,10 @@ def sahte_dedektor(cikti=None, giris_boyu=512):
     dedektor.conf_esigi = settings.DETECTION_STORE_FLOOR
     dedektor.sinif_adlari = {0: "human"}
     dedektor.giris_boyu = giris_boyu
+    # Gercek __init__'in kurdugu asama sayaclari; olcum noktalari bunlari kullanir.
+    dedektor.kurulum_suresi = 0.0
+    dedektor.kare_sayisi = 0
+    dedektor.sayaclar = {"goruntu_okuma": 0.0, "cikarim": 0.0, "son_islem": 0.0}
     return dedektor
 
 

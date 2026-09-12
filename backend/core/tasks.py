@@ -6,7 +6,9 @@ Onemli: settings.CELERY_TASK_ACKS_LATE acik. Isci is ortasinda olurse mesaj
 kaybolmaz, yeniden dagitilir -- bedeli gorevin IKI KEZ calisabilmesidir. Bu
 yuzden process_frame idempotent olmak ZORUNDA; ikisi birbirine baglidir.
 """
+import json
 import logging
+import time
 
 from celery import chord, shared_task
 from celery.exceptions import SoftTimeLimitExceeded
@@ -20,6 +22,22 @@ from .models import Detection, Frame, InferenceRun
 from .tiling import karodan_global_koordinata, karolari_hesapla, nms
 
 logger = logging.getLogger(__name__)
+
+
+def _zamanlama_yaz(kayit):
+    """Asama surelerini JSON satiri olarak ekler; ayar bossa hicbir sey yapmaz.
+
+    Kare basina TEK satir yazilir (karo basina degil). Olcum kapaliyken bu
+    fonksiyon tek bir ayar okumasina iner, uretim davranisi degismez."""
+    yol = getattr(settings, "TASK_TIMING_LOG", "")
+    if not yol:
+        return
+    try:
+        with open(yol, "a", encoding="utf-8") as dosya:
+            dosya.write(json.dumps(kayit, ensure_ascii=False) + "\n")
+    except OSError:
+        # Olcum kaydi uretimi bozmamali: yazilamazsa gorev normal devam eder.
+        logger.warning("Zamanlama kaydi yazilamadi: %s", yol, exc_info=True)
 
 
 @shared_task(name="core.run_inference")
@@ -67,11 +85,25 @@ def process_frame(self, run_id, frame_id):
 
     IDEMPOTENT: ayni gorev iki kez calisirsa tespitler ikiye katlanmaz.
     """
+    baslangic = time.perf_counter()
     try:
-        return _process_frame_inner(run_id, frame_id)
+        sonuc = _process_frame_inner(run_id, frame_id)
+        sonuc["uctan_uca_sure"] = time.perf_counter() - baslangic
+        _zamanlama_yaz({
+            "frame_id": frame_id, "run_id": run_id, "gorev_id": self.request.id,
+            "durum": sonuc["status"], "hata_sinifi": "",
+            "uctan_uca_sure": sonuc["uctan_uca_sure"],
+            **sonuc.pop("zamanlama", {}),
+        })
+        return sonuc
     except SoftTimeLimitExceeded:
         # Yumusak sinir: tekrar denemenin anlami yok, kare cok agir.
         _kareyi_basarisiz_isaretle(run_id, frame_id, "zaman asimi")
+        _zamanlama_yaz({
+            "frame_id": frame_id, "run_id": run_id, "gorev_id": self.request.id,
+            "durum": "failed", "hata_sinifi": "SoftTimeLimitExceeded",
+            "uctan_uca_sure": time.perf_counter() - baslangic,
+        })
         return {"frame_id": frame_id, "status": "failed", "reason": "timeout"}
     except Exception as exc:
         logger.warning(
@@ -93,11 +125,21 @@ def process_frame(self, run_id, frame_id):
         # ve kosu sonsuza kadar "running" kalir. Bunun yerine kareyi failed
         # isaretleyip normal donuyoruz.
         _kareyi_basarisiz_isaretle(run_id, frame_id, str(exc))
+        _zamanlama_yaz({
+            "frame_id": frame_id, "run_id": run_id, "gorev_id": self.request.id,
+            "durum": "failed", "hata_sinifi": type(exc).__name__,
+            "uctan_uca_sure": time.perf_counter() - baslangic,
+        })
         return {"frame_id": frame_id, "status": "failed", "reason": str(exc)}
 
 
 def _process_frame_inner(run_id, frame_id):
+    kare_basi = time.perf_counter()
     run = InferenceRun.objects.select_related("model_version").get(pk=run_id)
+    # Kuyrukta bekleme: kosu kaydinin olustugu andan bu gorevin isciye
+    # dusmesine kadar gecen sure. Tum kareler ayni chord ile kuyruga girdigi
+    # icin bu, karenin sirasini bekledigi suredir.
+    kuyruk_bekleme = max(0.0, (timezone.now() - run.started_at).total_seconds())
 
     with transaction.atomic():
         # Satir kilidi: iki isci ayni kareyi almaya calisirsa ikincisi burada
@@ -107,17 +149,27 @@ def _process_frame_inner(run_id, frame_id):
         if frame.status == Frame.Status.DONE:
             # Ilk isci isi zaten bitirmis. Dedektoru tekrar calistirmiyoruz,
             # sayaci tekrar artirmiyoruz.
-            return {"frame_id": frame_id, "status": "already_done", "detections": 0}
+            return {
+                "frame_id": frame_id, "status": "already_done", "detections": 0,
+                "zamanlama": {"kuyruk_bekleme": kuyruk_bekleme,
+                              "frame_toplam": time.perf_counter() - kare_basi},
+            }
 
         frame.status = Frame.Status.PROCESSING
         frame.save(update_fields=["status"])
 
     # Agir is kilidin DISINDA: dedektor saniyelerce surebilir, bu sure boyunca
     # Frame satirini kilitli tutmak diger iscileri bosuna bekletir.
+    karolama_basi = time.perf_counter()
     karolar = karolari_hesapla(
         frame.width, frame.height, run.tile_size, run.overlap_ratio
     )
     detector = get_detector(run.model_version, frame_sha256=frame.sha256)
+    # Asama sayaclari yalnizca gercek dedektorde var; sahte dedektorde bos kalir.
+    if hasattr(detector, "olcum_sifirla"):
+        detector.olcum_sifirla()
+    karolama_suresi = time.perf_counter() - karolama_basi
+    dedektor_basi = time.perf_counter()
 
     ham_kutular = []
     for karo in karolar:
@@ -143,14 +195,28 @@ def _process_frame_inner(run_id, frame_id):
     # nms() yalnizca ilk bes ogeyi kullanir, kalanlar dokunulmadan gecer --
     # bu sayede karo indeksleri kutuya bagli kalir, sonradan eslestirmek
     # gerekmez.
+    dedektor_suresi = time.perf_counter() - dedektor_basi
+    nms_basi = time.perf_counter()
     nihai = nms(ham_kutular, run.iou_threshold)
+    nms_suresi = time.perf_counter() - nms_basi
 
+    sayaclar = detector.olcum_al() if hasattr(detector, "olcum_al") else {}
+    # Karo dongusunde gecen sure okuma + cikarim + karo ici son islemden olusur;
+    # kalan kisim (koordinat tasima, taban filtresi) son isleme eklenir.
+    olculen = sum(sayaclar.values())
+    koordinat_suresi = max(0.0, dedektor_suresi - olculen)
+
+    db_basi = time.perf_counter()
     with transaction.atomic():
         # Kilidi tekrar al ve durumu YENIDEN kontrol et: agir is sirasinda baska
         # bir isci (yeniden dagitilmis bir mesajla) bitirmis olabilir.
         frame = Frame.objects.select_for_update().get(pk=frame_id)
         if frame.status == Frame.Status.DONE:
-            return {"frame_id": frame_id, "status": "already_done", "detections": 0}
+            return {
+                "frame_id": frame_id, "status": "already_done", "detections": 0,
+                "zamanlama": {"kuyruk_bekleme": kuyruk_bekleme,
+                              "frame_toplam": time.perf_counter() - kare_basi},
+            }
 
         # SIL-SONRA-YAZ: bu (kosu, kare) ciftinin eski tespitleri neyse silinir,
         # yenileri yazilir. Boylece ikinci calisma EKLEME degil YERINE KOYMA olur.
@@ -184,7 +250,27 @@ def _process_frame_inner(run_id, frame_id):
                 guncelleme["frames_failed"] = F("frames_failed") - 1
             InferenceRun.objects.filter(pk=run_id).update(**guncelleme)
 
-    return {"frame_id": frame_id, "status": "done", "detections": len(nihai)}
+    db_suresi = time.perf_counter() - db_basi
+    soguk = getattr(detector, "kare_sayisi", 0) == 1
+    return {
+        "frame_id": frame_id,
+        "status": "done",
+        "detections": len(nihai),
+        "zamanlama": {
+            "kuyruk_bekleme": kuyruk_bekleme,
+            "goruntu_okuma": sayaclar.get("goruntu_okuma", 0.0),
+            "karolama": karolama_suresi,
+            "onnx_cikarim": sayaclar.get("cikarim", 0.0),
+            "nms_koordinat": sayaclar.get("son_islem", 0.0) + nms_suresi + koordinat_suresi,
+            "db_yazma": db_suresi,
+            "frame_toplam": time.perf_counter() - kare_basi,
+            "tespit_sayisi": len(nihai),
+            "karo_sayisi": len(karolar),
+            "soguk_baslangic": soguk,
+            "oturum_kurulum_suresi": getattr(detector, "kurulum_suresi", 0.0) if soguk else 0.0,
+            "surec_kare_sirasi": getattr(detector, "kare_sayisi", 0),
+        },
+    }
 
 
 def _kareyi_basarisiz_isaretle(run_id, frame_id, sebep):

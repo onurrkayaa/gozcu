@@ -14,6 +14,17 @@ def temp_media_root(settings, tmp_path):
     return settings.MEDIA_ROOT
 
 
+@pytest.fixture(autouse=True)
+def zamanlama_kaydi_kapali(settings):
+    """Testler olcum kosusunun zamanlama kaydina yazmasin.
+
+    TASK_TIMING_LOG ortamdan dolu gelebilir (olcum kosusu sirasinda oyle olur).
+    Test veritabaninin run_id degerleri gercek kosununkilerle cakisabildigi icin
+    test satirlari o dosyaya karisirsa olcum bozulur. Kayda ihtiyaci olan test
+    ayari kendisi doldurur."""
+    settings.TASK_TIMING_LOG = ""
+
+
 @pytest.fixture
 def make_image():
     """Bellekte kucuk bir test goruntusu uretir; gercek 4000x3000 foto kullanmiyoruz."""
