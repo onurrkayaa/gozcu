@@ -49,3 +49,7 @@ backend/media/*
 
 # Pahali kosularin yedegi - depoya girmez, yerelde kalir
 reports_yedek_*/
+
+# Frontend bagimliliklari ve derleme ciktisi
+frontend/node_modules/
+frontend/dist/

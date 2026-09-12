@@ -1,0 +1,508 @@
+/*
+ * Gözcü operatör arayüzü.
+ *
+ * Tasarım kararı: süsleme yok. Bu ekranlar arama kurtarma bağlamında
+ * okunacak; yüksek kontrast, büyük tıklama alanı ve net durum göstergesi
+ * estetikten önce gelir. Renk TEK BAŞINA durum taşımaz -- her rozet renkle
+ * birlikte metin de gösterir, renk körü bir operatör ayrımı kaybetmez.
+ */
+
+:root {
+  --zemin: #10151c;
+  --yuzey: #171e28;
+  --yuzey-2: #1e2733;
+  --kenar: #2c3949;
+  --kenar-belirgin: #3e4f63;
+  --metin: #eaf0f7;
+  --metin-sonuk: #a3b1c2;
+  --vurgu: #4da3ff;
+  --vurgu-koyu: #1b6fc4;
+  --basari: #46c37b;
+  --uyari: #e8b04b;
+  --hata: #f4756b;
+  --odak: #ffd166;
+  --yaricap: 6px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--zemin);
+  color: var(--metin);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* Odak her yerde GÖRÜNÜR olmalı: klavyeyle gezen operatör nerede olduğunu
+   görmeli. Tarayıcı varsayılanını kaldırmıyoruz, belirginleştiriyoruz. */
+:focus-visible {
+  outline: 3px solid var(--odak);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+a {
+  color: var(--vurgu);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 0.5rem;
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+h2 {
+  font-size: 1.2rem;
+}
+h3 {
+  font-size: 1rem;
+}
+
+/* --- Sayfa iskeleti ----------------------------------------------------- */
+
+.kabuk {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ust-serit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--yuzey);
+  border-bottom: 1px solid var(--kenar);
+}
+
+.ust-serit .marka {
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  color: var(--metin);
+}
+
+.ust-serit .bosluk {
+  flex: 1;
+}
+
+.ust-serit .kullanici {
+  color: var(--metin-sonuk);
+  font-size: 0.9rem;
+}
+
+/* Kapsam ifadesi: her sayfada görünür. Prototip olduğu ve operatör kararının
+   yerine geçmediği gizlenmez. */
+.kapsam-uyarisi {
+  padding: 0.6rem 1.25rem;
+  background: #3a2f16;
+  border-bottom: 1px solid #5c4a20;
+  color: #f4e0b0;
+  font-size: 0.88rem;
+}
+
+.icerik {
+  flex: 1;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+.alt-bilgi {
+  padding: 1rem 1.25rem;
+  color: var(--metin-sonuk);
+  font-size: 0.82rem;
+  border-top: 1px solid var(--kenar);
+}
+
+/* --- Kart ve panel ------------------------------------------------------ */
+
+.kart {
+  background: var(--yuzey);
+  border: 1px solid var(--kenar);
+  border-radius: var(--yaricap);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.kart-basligi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.satir {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.aralikli {
+  justify-content: space-between;
+}
+
+/* --- Form --------------------------------------------------------------- */
+
+label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  background: var(--yuzey-2);
+  color: var(--metin);
+  border: 1px solid var(--kenar-belirgin);
+  border-radius: var(--yaricap);
+  font: inherit;
+}
+
+textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+.alan {
+  margin-bottom: 0.9rem;
+}
+
+.yardim-metni {
+  color: var(--metin-sonuk);
+  font-size: 0.83rem;
+  margin-top: 0.3rem;
+}
+
+button {
+  font: inherit;
+  padding: 0.55rem 1rem;
+  border-radius: var(--yaricap);
+  border: 1px solid var(--kenar-belirgin);
+  background: var(--yuzey-2);
+  color: var(--metin);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--vurgu);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button.birincil {
+  background: var(--vurgu-koyu);
+  border-color: var(--vurgu);
+  color: #fff;
+  font-weight: 600;
+}
+
+button.tehlikeli {
+  border-color: var(--hata);
+  color: var(--hata);
+}
+
+/* --- Durum bildirimleri ------------------------------------------------- */
+
+.bildirim {
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--yaricap);
+  border: 1px solid var(--kenar-belirgin);
+  background: var(--yuzey-2);
+  margin-bottom: 0.9rem;
+}
+
+.bildirim.hata {
+  border-color: var(--hata);
+  background: #3a1f1d;
+  color: #ffd8d4;
+}
+
+.bildirim.basari {
+  border-color: var(--basari);
+  background: #17301f;
+  color: #cdf0dc;
+}
+
+.bildirim.bos {
+  color: var(--metin-sonuk);
+  text-align: center;
+}
+
+/* Rozet: renk + METİN birlikte. Renk tek başına anlam taşımaz. */
+.rozet {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+.rozet .isaret {
+  font-size: 0.9em;
+}
+
+.rozet.bekliyor {
+  color: var(--metin-sonuk);
+}
+.rozet.kuyrukta {
+  color: var(--vurgu);
+}
+.rozet.isleniyor {
+  color: var(--uyari);
+}
+.rozet.tamam {
+  color: var(--basari);
+}
+.rozet.basarisiz {
+  color: var(--hata);
+}
+
+/* --- Tablo -------------------------------------------------------------- */
+
+.tablo-sarmal {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--kenar);
+  vertical-align: middle;
+}
+
+th {
+  color: var(--metin-sonuk);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+tbody tr:hover {
+  background: var(--yuzey-2);
+}
+
+/* --- İlerleme ----------------------------------------------------------- */
+
+.ilerleme-cubugu {
+  height: 10px;
+  background: var(--yuzey-2);
+  border: 1px solid var(--kenar-belirgin);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.ilerleme-cubugu > div {
+  height: 100%;
+  background: var(--vurgu);
+  transition: width 0.3s ease;
+}
+
+.sayim-kutulari {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.sayim-kutusu {
+  border: 1px solid var(--kenar-belirgin);
+  border-radius: var(--yaricap);
+  padding: 0.4rem 0.7rem;
+  min-width: 5.5rem;
+  background: var(--yuzey-2);
+}
+
+.sayim-kutusu .deger {
+  font-size: 1.25rem;
+  font-weight: 700;
+  display: block;
+}
+
+.sayim-kutusu .etiket {
+  color: var(--metin-sonuk);
+  font-size: 0.78rem;
+}
+
+/* --- Tespit inceleme ---------------------------------------------------- */
+
+.inceleme-duzeni {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .inceleme-duzeni {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/*
+ * Görüntü ve kutu katmanı.
+ *
+ * Sarmalayıcı, görüntünün ekrandaki gerçek kutusuyla aynı boyutta olmalı ki
+ * yüzde cinsinden yerleştirilen kutular hizalı kalsın. Görüntü block yapılır
+ * (satır içi görüntünün taban çizgisi boşluğu kutuları birkaç piksel kaydırır)
+ * ve en-boy oranı korunur.
+ */
+.goruntu-katmani {
+  position: relative;
+  display: block;
+  width: 100%;
+  background: #000;
+  border: 1px solid var(--kenar-belirgin);
+  border-radius: var(--yaricap);
+  overflow: hidden;
+  line-height: 0;
+}
+
+.goruntu-katmani img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.tespit-kutusu {
+  position: absolute;
+  border: 2px solid var(--uyari);
+  background: rgba(232, 176, 75, 0.12);
+  cursor: pointer;
+  padding: 0;
+  border-radius: 0;
+}
+
+.tespit-kutusu:hover {
+  border-color: #fff;
+}
+
+.tespit-kutusu.secili {
+  border-color: var(--vurgu);
+  border-width: 3px;
+  background: rgba(77, 163, 255, 0.18);
+}
+
+.tespit-listesi {
+  max-height: 460px;
+  overflow-y: auto;
+  border: 1px solid var(--kenar);
+  border-radius: var(--yaricap);
+}
+
+.tespit-satiri {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--kenar);
+  border-radius: 0;
+  text-align: left;
+  color: var(--metin);
+}
+
+.tespit-satiri.secili {
+  background: var(--vurgu-koyu);
+}
+
+/* --- Konum bilgisi ------------------------------------------------------ */
+
+.konum-kutusu {
+  border: 1px dashed var(--kenar-belirgin);
+  border-radius: var(--yaricap);
+  padding: 0.7rem 0.9rem;
+  color: var(--metin-sonuk);
+  font-size: 0.9rem;
+}
+
+.konum-kutusu.demo {
+  border-style: solid;
+  border-color: var(--uyari);
+  color: #f4e0b0;
+  background: #3a2f16;
+  font-weight: 600;
+}
+
+/* --- Yardımcılar -------------------------------------------------------- */
+
+.sonuk {
+  color: var(--metin-sonuk);
+}
+
+.kucuk {
+  font-size: 0.85rem;
+}
+
+.tek-aralik {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.gorsel-gizli {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.giris-duzeni {
+  max-width: 380px;
+  margin: 3rem auto;
+}
+
+.dosya-listesi {
+  list-style: none;
+  padding: 0;
+  margin: 0.7rem 0 0;
+}
+
+.dosya-listesi li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--kenar);
+  border-radius: var(--yaricap);
+  margin-bottom: 0.35rem;
+  font-size: 0.88rem;
+}
