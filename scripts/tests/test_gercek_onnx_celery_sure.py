@@ -267,3 +267,87 @@ def test_zorunlu_metadata_csvde():
         for alan in ("kosu_komut", "kosu_tarih", "kosu_surum_python",
                      "kosu_model_surumu", "kosu_onnx_sha256", "kosu_olcum_yolu"):
             assert satir[alan]
+
+# --- Cikti yolu guvenligi -----------------------------------------------------
+
+
+class SahteArguman:
+    """argparse.Namespace yerine gecen kucuk tasiyici."""
+
+    def __init__(self, kare_cikti=None, ozet_cikti=None, uzerine_yaz=False):
+        self.kare_cikti = kare_cikti
+        self.ozet_cikti = ozet_cikti
+        self.uzerine_yaz = uzerine_yaz
+
+
+def test_yol_verilmezse_gorev_adindan_uretiliyor(tmp_path, monkeypatch):
+    """Argumansiz kosu tabandaki CSV adini kullanmaz; gorev adiyla ayrisir."""
+    monkeypatch.setattr(sure, "RAPOR_KOK", tmp_path)
+    kare, ozet = sure.cikti_yollarini_belirle(SahteArguman(), "olcum-onnx-deneme-1")
+
+    assert kare.name == "gercek_onnx_celery_sure_olcum-onnx-deneme-1.csv"
+    assert ozet.name == "gercek_onnx_celery_sure_olcum-onnx-deneme-1_ozet.csv"
+    assert kare.name != "gercek_onnx_celery_sure.csv"
+
+
+def test_mevcut_dosyanin_uzerine_sessizce_yazilmiyor(tmp_path, monkeypatch):
+    """Uretilen yol zaten varsa script durur ve dosyaya dokunmaz."""
+    monkeypatch.setattr(sure, "RAPOR_KOK", tmp_path)
+    mevcut = tmp_path / "gercek_onnx_celery_sure_olcum-1.csv"
+    mevcut.write_text("taban olcumu", encoding="utf-8")
+
+    with pytest.raises(SystemExit) as hata:
+        sure.cikti_yollarini_belirle(SahteArguman(), "olcum-1")
+
+    assert mevcut.name in str(hata.value)
+    assert "--uzerine-yaz" in str(hata.value)
+    assert mevcut.read_text(encoding="utf-8") == "taban olcumu"
+
+
+def test_acik_verilen_yol_da_korunuyor(tmp_path):
+    """Yol acikca verilse bile var olan dosya --uzerine-yaz olmadan korunur."""
+    hedef = tmp_path / "taban.csv"
+    hedef.write_text("eski olcum", encoding="utf-8")
+
+    with pytest.raises(SystemExit):
+        sure.cikti_yollarini_belirle(SahteArguman(kare_cikti=hedef), "olcum-2")
+    assert hedef.read_text(encoding="utf-8") == "eski olcum"
+
+
+def test_ozet_yolu_mevcutsa_da_duruluyor(tmp_path):
+    """Yalnizca ozet dosyasi varsa bile kosu baslamaz."""
+    kare = tmp_path / "yeni.csv"
+    ozet = tmp_path / "yeni_ozet.csv"
+    ozet.write_text("eski ozet", encoding="utf-8")
+
+    with pytest.raises(SystemExit) as hata:
+        sure.cikti_yollarini_belirle(SahteArguman(kare_cikti=kare), "olcum-3")
+    assert "ozet" in str(hata.value)
+
+
+def test_uzerine_yaz_acikca_istenirse_izin_veriliyor(tmp_path):
+    """Bilerek verilen --uzerine-yaz bayragi eski davranisi geri getirir."""
+    hedef = tmp_path / "taban.csv"
+    hedef.write_text("eski olcum", encoding="utf-8")
+
+    kare, ozet = sure.cikti_yollarini_belirle(
+        SahteArguman(kare_cikti=hedef, uzerine_yaz=True), "olcum-4"
+    )
+    assert kare == hedef
+    assert ozet == tmp_path / "taban_ozet.csv"
+
+
+def test_acik_ozet_yolu_kare_adindan_turetilmiyor(tmp_path):
+    """Ozet yolu acikca verildiyse oldugu gibi kullanilir."""
+    kare, ozet = sure.cikti_yollarini_belirle(
+        SahteArguman(kare_cikti=tmp_path / "a.csv", ozet_cikti=tmp_path / "b.csv"), "olcum-5"
+    )
+    assert (kare.name, ozet.name) == ("a.csv", "b.csv")
+
+
+def test_varsayilan_cikti_yollari_kaldirildi():
+    """CLI artik sabit bir varsayilan CSV yolu tasimiyor; guvenlik bayragi var."""
+    kaynak = (SCRIPT_DIZIN / "19_gercek_onnx_celery_sure.py").read_text(encoding="utf-8")
+    assert 'default=RAPOR_KOK / "gercek_onnx_celery_sure.csv"' not in kaynak
+    assert 'default=RAPOR_KOK / "gercek_onnx_celery_sure_ozet.csv"' not in kaynak
+    assert '"--uzerine-yaz"' in kaynak

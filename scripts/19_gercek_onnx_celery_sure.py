@@ -95,10 +95,49 @@ def argumanlari_coz() -> argparse.Namespace:
         "--onnx-bilgi", type=Path, default=VARSAYILAN_ONNX_BILGI,
         help="Model kimliginin dogrulandigi export kaydi",
     )
-    ayrastirici.add_argument("--kare-cikti", type=Path, default=RAPOR_KOK / "gercek_onnx_celery_sure.csv")
-    ayrastirici.add_argument("--ozet-cikti", type=Path, default=RAPOR_KOK / "gercek_onnx_celery_sure_ozet.csv")
+    ayrastirici.add_argument(
+        "--kare-cikti", type=Path, default=None,
+        help=(
+            "Kare bazinda CSV yolu. Verilmezse gorev adindan cakismayan bir yol "
+            "uretilir; mevcut bir dosyanin uzerine sessizce yazilmaz."
+        ),
+    )
+    ayrastirici.add_argument(
+        "--ozet-cikti", type=Path, default=None,
+        help="Ozet CSV yolu. Verilmezse kare CSV adindan turetilir.",
+    )
+    ayrastirici.add_argument(
+        "--uzerine-yaz", action="store_true",
+        help=(
+            "Var olan bir CSV'nin uzerine yazilmasina ACIKCA izin verir. "
+            "Verilmezse mevcut dosya korunur ve script durur."
+        ),
+    )
     ayrastirici.add_argument("--bekleme-siniri", type=float, default=3600.0)
     return ayrastirici.parse_args()
+
+
+# --- Cikti yolu guvenligi -----------------------------------------------------
+
+
+def cikti_yollarini_belirle(arg, gorev_adi):
+    """Kare ve ozet CSV yollarini belirler ve mevcut olcumleri korur.
+
+    Argumansiz bir kosunun tabandaki CSV'lerin uzerine yazmasi, saatler suren bir
+    olcumun sessizce kaybolmasi demektir. Kural:
+      - yol verilmediyse gorev adindan cakismayan bir ad uretilir,
+      - verilen ya da uretilen yol zaten varsa --uzerine-yaz olmadan durulur."""
+    kare = arg.kare_cikti or (RAPOR_KOK / f"gercek_onnx_celery_sure_{gorev_adi}.csv")
+    ozet = arg.ozet_cikti or kare.with_name(f"{kare.stem}_ozet{kare.suffix}")
+
+    for ad, yol in (("kare", kare), ("ozet", ozet)):
+        if yol.exists() and not arg.uzerine_yaz:
+            raise SystemExit(
+                f"{ad} CSV'si zaten var: {yol}\n"
+                "Mevcut olcumun uzerine yazilmasin diye durdum. Baska bir yol verin "
+                f"(--{ad}-cikti ...) ya da bilerek degistiriyorsaniz --uzerine-yaz ekleyin."
+            )
+    return kare, ozet
 
 
 # --- Docker yardimcilari ------------------------------------------------------
@@ -419,7 +458,11 @@ def main() -> None:
     if arg.limit:
         goruntu_sayisi = min(goruntu_sayisi, arg.limit)
     gorev_adi = arg.gorev_adi or f"olcum-onnx-sure-{datetime.now():%Y%m%d-%H%M%S}"
+    # Cikti yollari TARAMADAN ONCE belirlenir: saatler suren bir kosunun sonunda
+    # "bu dosya zaten var" demek olcumu cope atmak olurdu.
+    kare_cikti, ozet_cikti = cikti_yollarini_belirle(arg, gorev_adi)
     print(f"\nGorev: {gorev_adi} | {goruntu_sayisi} goruntu | model {arg.model_surumu}")
+    print(f"Cikti: {kare_cikti.name} + {ozet_cikti.name}")
     print("Kareler gercek Celery kuyruguna birakiliyor; isi calisan isci yapiyor.\n",
           flush=True)
 
@@ -495,8 +538,8 @@ def main() -> None:
         olcum_secenegi=f"TASK_TIMING_LOG={ayarlar['timing_log']}",
         store_floor=ayarlar["store_floor"],
     )
-    kare_csv = csv_yaz(arg.kare_cikti, kare_satir, kosu)
-    ozet_csv = csv_yaz(arg.ozet_cikti, ozet_satir, kosu)
+    kare_csv = csv_yaz(kare_cikti, kare_satir, kosu)
+    ozet_csv = csv_yaz(ozet_cikti, ozet_satir, kosu)
 
     print("\n=== ASAMA SURELERI (sn) ===")
     tablo_bas(ozet, ["olcu", "olcum_sayisi", "minimum", "medyan", "p95", "maksimum"])
