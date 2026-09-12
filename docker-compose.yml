@@ -46,8 +46,11 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: 5432
+      # Agirlik depoya girmez; asagidaki salt okunur baglama ile gelir.
+      ONNX_MODEL_PATH: /models/model512_best.onnx
     volumes:
       - ./backend:/app
+      - ./agirliklar:/models:ro
     ports:
       - "8000:8000"
     depends_on:
@@ -65,8 +68,12 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: 5432
+      # Gercek dedektorun modeli. Yol konteyner icidir; kaynak klasor host'ta
+      # ./agirliklar, salt okunur baglanir.
+      ONNX_MODEL_PATH: /models/model512_best.onnx
     volumes:
       - ./backend:/app
+      - ./agirliklar:/models:ro
     command: ["celery", "-A", "gozcu_api", "worker", "--loglevel=info", "--concurrency=2"]
     depends_on:
       db:

@@ -152,3 +152,9 @@ CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 # pisirilmez: bir tam tarama pahalidir, tek kosudan her esigi cevaplayabilmek
 # icin kutular bu sabit tabanla saklanir, esik okuma aninda uygulanir.
 DETECTION_STORE_FLOOR = 0.05
+
+# Gercek dedektor. ModelVersion.framework == "onnx" olan kosular bu ONNX
+# dosyasiyla calisir; "fake" olanlar sahte dedektorde kalir. Yol ortamdan gelir
+# cunku agirlik dosyasi depoya girmez ve konteynerde baska bir yere baglanir
+# (docker-compose: ./agirliklar -> /models, salt okunur).
+ONNX_MODEL_PATH = env("ONNX_MODEL_PATH", "")

@@ -10,3 +10,7 @@ matplotlib==3.11.1
 pytest==9.1.1
 # PDF uretimi (06_rapor_uret.py). Saf Python; brew/sistem bagimliligi yok.
 reportlab==5.0.1
+# ONNX disa aktarim ve PyTorch-ONNX karsilastirmasi (scripts/17, scripts/18).
+onnx==1.22.0
+onnxslim==0.1.96
+onnxruntime==1.30.0

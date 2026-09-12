@@ -10,3 +10,6 @@ pytest-django==4.14.0
 model-bakery==1.24.0
 celery[redis]==5.6.3
 redis==6.4.0
+# Gercek dedektor: ONNX cikarim motoru. Surum, olcumun yapildigi surumdur
+# (reports/pytorch_onnx_metrik.csv -> kosu_surum_onnxruntime).
+onnxruntime==1.30.0

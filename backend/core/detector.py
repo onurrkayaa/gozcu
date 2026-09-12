@@ -1,13 +1,26 @@
-"""Dedektor arayuzu ve sahte uygulama.
+"""Dedektor arayuzu, sahte uygulama ve gercek dedektor secimi.
 
-Hafta 2'de gercek model YOK. Amac boru hattinin dogrulugunu modelin
-yavasligindan bagimsiz dogrulamak. Hafta 4'te gercek model yalnizca buraya,
-get_detector() fabrikasinin arkasina eklenecek; tasks.py ve uclar degismeyecek.
+Hafta 2'de gercek model yoktu; boru hatti FakeDetector ile dogrulandi. Hafta
+4'te gercek Model-512 ONNX dedektoru yalnizca buraya, get_detector()
+fabrikasinin arkasina eklendi; tasks.py ve uclar degismedi.
+
+Secim ACIK bir veriye dayanir: ModelVersion.framework. "onnx" olan kosu gercek
+modelle calisir, "fake" olan sahte dedektorde kalir. Gercek model yuklenemezse
+SESSIZCE sahte dedektore DUSULMEZ -- hata yukselir, kare mevcut durum
+makinesine gore failed olur.
 """
 import hashlib
+import logging
 import random
 import time
 from abc import ABC, abstractmethod
+
+logger = logging.getLogger(__name__)
+
+# ModelVersion.framework degerleri. Gercek dedektor yalnizca ONNX_CERCEVESI
+# icin kurulur.
+ONNX_CERCEVESI = "onnx"
+SAHTE_CERCEVE = "fake"
 
 
 class Detector(ABC):
@@ -81,8 +94,27 @@ class FakeDetector(Detector):
 def get_detector(model_version, frame_sha256):
     """Dedektor fabrikasi.
 
-    Simdilik model_version ne olursa olsun FakeDetector doner. Hafta 4'te
-    gercek model bu fonksiyonun icinde secilecek; cagiran hicbir yer
-    degismeyecek.
+    framework == "onnx" ise gercek ONNX dedektoru, aksi halde FakeDetector.
+    Gercek dedektor kurulamazsa hata YUKSELIR: sahte dedektore dusmek, model
+    bozukken sistemin "calisiyor" gorunmesi demektir.
     """
-    return FakeDetector(frame_sha256=frame_sha256)
+    cerceve = getattr(model_version, "framework", SAHTE_CERCEVE)
+    if cerceve != ONNX_CERCEVESI:
+        return FakeDetector(frame_sha256=frame_sha256)
+
+    from django.conf import settings
+
+    from .onnx_detector import ModelYuklenemedi, paylasilan_dedektor
+
+    model_yolu = settings.ONNX_MODEL_PATH
+    if not model_yolu:
+        raise ModelYuklenemedi(
+            "ONNX_MODEL_PATH ayarlanmamis; gercek dedektor icin model yolu gerekli."
+        )
+    try:
+        # Oturum surec basina paylasilir: her karo (hatta her kare) icin yeni
+        # oturum acmak modeli diskten tekrar okumak demektir.
+        return paylasilan_dedektor(model_yolu, settings.DETECTION_STORE_FLOOR)
+    except ModelYuklenemedi:
+        logger.exception("Gercek ONNX dedektoru yuklenemedi: %s", model_yolu)
+        raise
