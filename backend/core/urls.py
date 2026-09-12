@@ -2,7 +2,14 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views import (
+    DetectionReviewView,
+    FindingDetailView,
     FrameImageView,
+    MissionAuditListView,
+    MissionClusterView,
+    MissionFindingListCreateView,
+    MissionMemberDetailView,
+    MissionMemberListCreateView,
     MissionDetailView,
     MissionFrameListCreateView,
     MissionListCreateView,
@@ -10,6 +17,7 @@ from .views import (
     ModelVersionListView,
     RunDetailView,
     RunDetectionListView,
+    RunReviewListView,
     health,
 )
 
@@ -34,6 +42,38 @@ urlpatterns = [
         FrameImageView.as_view(),
         name="frame-image",
     ),
+    path(
+        "missions/<int:mission_id>/members/",
+        MissionMemberListCreateView.as_view(),
+        name="mission-members",
+    ),
+    path(
+        "missions/<int:mission_id>/members/<int:member_id>/",
+        MissionMemberDetailView.as_view(),
+        name="mission-member-detail",
+    ),
+    path(
+        "missions/<int:mission_id>/findings/",
+        MissionFindingListCreateView.as_view(),
+        name="mission-findings",
+    ),
+    path("findings/<int:finding_id>/", FindingDetailView.as_view(), name="finding-detail"),
+    path(
+        "missions/<int:mission_id>/clusters/",
+        MissionClusterView.as_view(),
+        name="mission-clusters",
+    ),
+    path(
+        "missions/<int:mission_id>/audit/",
+        MissionAuditListView.as_view(),
+        name="mission-audit",
+    ),
+    path(
+        "detections/<int:detection_id>/reviews/",
+        DetectionReviewView.as_view(),
+        name="detection-reviews",
+    ),
+    path("runs/<int:run_id>/reviews/", RunReviewListView.as_view(), name="run-reviews"),
     path("runs/<int:pk>/", RunDetailView.as_view(), name="run-detail"),
     path(
         "runs/<int:run_id>/detections/",
