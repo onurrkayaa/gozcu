@@ -397,6 +397,12 @@ tbody tr:hover {
   height: auto;
 }
 
+/* Sarmalayici tam goruntu kadar olsun: fazladan bir satir yuksekligi veya
+   yuvarlama farki kutulari kaydirir. */
+.goruntu-katmani {
+  font-size: 0;
+}
+
 .tespit-kutusu {
   position: absolute;
   border: 2px solid var(--uyari);

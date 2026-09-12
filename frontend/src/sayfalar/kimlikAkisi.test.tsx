@@ -6,6 +6,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+
+import { gorevleriGetir } from "../api/uclar";
 
 import { GirisSayfasi } from "./GirisSayfasi";
 import { KorumaliRota } from "../kimlik/KorumaliRota";
@@ -123,5 +126,55 @@ describe("giriş", () => {
     sar(<Rotalar />, { baslangicRotasi: "/gorevler" });
 
     expect(await screen.findByText("Gizli görev listesi")).toBeInTheDocument();
+  });
+});
+
+describe("zorunlu çıkış", () => {
+  it("yenileme düşünce elle çıkışla AYNI izleri siler", async () => {
+    tokenDeposu.yaz("erisim", "cop-yenileme");
+    window.localStorage.setItem("gozcu.kullaniciAdi", "operator");
+
+    // İlk istek 401, yenileme de 401: oturum zorla kapanmalı.
+    fetchTaklidiKur((yol) => {
+      if (yol.includes("/auth/token/refresh/")) {
+        return { durum: 401, govde: { detail: "Token is invalid" } };
+      }
+      return { durum: 401, govde: { detail: "gecersiz" } };
+    });
+
+    // Korumalı içerik GERÇEKTEN istek atmalı; yoksa 401 hiç oluşmaz.
+    function IstekAtanIcerik() {
+      const sorgu = useQuery({
+        queryKey: ["deneme-gorevler"],
+        queryFn: () => gorevleriGetir(),
+        retry: false,
+      });
+      return <div>{sorgu.isPending ? "Yükleniyor" : "Gizli görev listesi"}</div>;
+    }
+
+    sar(
+      <Routes>
+        <Route path="/giris" element={<GirisSayfasi />} />
+        <Route
+          path="/gorevler"
+          element={
+            <KorumaliRota>
+              <IstekAtanIcerik />
+            </KorumaliRota>
+          }
+        />
+      </Routes>,
+      { baslangicRotasi: "/gorevler" },
+    );
+
+    await waitFor(() => {
+      expect(tokenDeposu.erisimTokeni()).toBeNull();
+      expect(tokenDeposu.yenilemeTokeni()).toBeNull();
+      // Kullanıcı adı da kalmamalı: iki çıkış yolu aynı temizliği yapar.
+      expect(window.localStorage.getItem("gozcu.kullaniciAdi")).toBeNull();
+    });
+
+    // Oturum düştüğü için korumalı rota artık giriş ekranına yönlendirir.
+    expect(await screen.findByLabelText("Kullanıcı adı")).toBeInTheDocument();
   });
 });

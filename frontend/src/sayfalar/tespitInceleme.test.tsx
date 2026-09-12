@@ -97,11 +97,15 @@ describe("tespit katmanı", () => {
     expect(sol + genislik).toBeLessThanOrEqual(100.0001);
   });
 
-  it("katman, karenin en-boy oranını korur", async () => {
+  it("en-boy oranı sarmalayıcıya değil GÖRÜNTÜYE verilir", async () => {
+    // Oran sarmalayıcıda olsaydı yüksekliği görüntününkinden 1 px farklı
+    // yuvarlanabilir ve kutular alt kenarda kayardı.
     taklitKur([]);
     sar(incelemeSayfasi(), { baslangicRotasi: "/kosular/9" });
-    const katman = await screen.findByTestId("goruntu-katmani");
-    expect(katman.style.aspectRatio).toBe("4000 / 3000");
+
+    const goruntu = await screen.findByTestId("kare-goruntusu");
+    expect(goruntu.style.aspectRatio).toBe("4000 / 3000");
+    expect(screen.getByTestId("goruntu-katmani").style.aspectRatio).toBe("");
   });
 
   it("tespitler arasında seçim yapılabilir", async () => {

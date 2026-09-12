@@ -69,14 +69,22 @@ export function TespitKatmani({ kare, tespitler, seciliTespitId, tespitSecildi }
   if (!goruntuAdresi) return null;
 
   return (
-    <div
-      className="goruntu-katmani"
-      /* En-boy oranı sarmalayıcıda da sabitlenir: görüntü yüklenirken kutular
-         kaymasın ve düzen zıplamasın. */
-      style={{ aspectRatio: `${kare.width} / ${kare.height}` }}
-      data-testid="goruntu-katmani"
-    >
-      <img src={goruntuAdresi} alt={`${kare.original_filename} karesi`} />
+    <div className="goruntu-katmani" data-testid="goruntu-katmani">
+      {/*
+        En-boy oranı SARMALAYICIYA DEĞİL GÖRÜNTÜYE verilir.
+        Sarmalayıcıya verilseydi yüksekliği kendi hesabıyla yuvarlanır
+        (802 px genişlikte 601 px), görüntü ise kendi doğal oranıyla 602 px
+        çizilirdi; kutular yüzdeyi sarmalayıcının kutusuna göre çözdüğü için
+        aradaki 1 px'lik fark alt kenarda hizayı kaydırırdı. Oran görüntüde
+        durunca sarmalayıcı tam görüntü kadar olur ve yükleme sırasında da
+        yer ayrıldığı için düzen zıplamaz.
+      */}
+      <img
+        src={goruntuAdresi}
+        alt={`${kare.original_filename} karesi`}
+        data-testid="kare-goruntusu"
+        style={{ aspectRatio: `${kare.width} / ${kare.height}` }}
+      />
 
       {tespitler.map((tespit) => {
         const yerlesim = kutuYerlesimi(tespit, kare.width, kare.height);

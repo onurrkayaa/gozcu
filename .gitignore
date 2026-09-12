@@ -53,3 +53,6 @@ reports_yedek_*/
 # Frontend bagimliliklari ve derleme ciktisi
 frontend/node_modules/
 frontend/dist/
+
+# Tarayici otomasyon araci gecici ciktilari
+.playwright-mcp/

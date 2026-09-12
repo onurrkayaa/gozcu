@@ -33,6 +33,17 @@ function kayitliKullaniciAdi(): string | null {
   }
 }
 
+/** Oturuma ait ne varsa siler. Elle çıkış ile zorunlu çıkış AYNI temizliği
+ *  yapmalı; aksi halde biri diğerinden artık bırakır. */
+function oturumIzleriniSil(): void {
+  tokenDeposu.temizle();
+  try {
+    window.localStorage.removeItem(KULLANICI_ADI_ANAHTARI);
+  } catch {
+    // Yazılamıyorsa bile bellek durumu temizlenir.
+  }
+}
+
 export function OturumSaglayici({ children }: { children: ReactNode }) {
   const sorguIstemcisi = useQueryClient();
   const [girisYapildiMi, setGirisYapildiMi] = useState(
@@ -41,12 +52,7 @@ export function OturumSaglayici({ children }: { children: ReactNode }) {
   const [kullaniciAdi, setKullaniciAdi] = useState<string | null>(kayitliKullaniciAdi);
 
   const cikisYap = useCallback(() => {
-    tokenDeposu.temizle();
-    try {
-      window.localStorage.removeItem(KULLANICI_ADI_ANAHTARI);
-    } catch {
-      // Yazılamıyorsa bile bellek durumu temizlenmeli.
-    }
+    oturumIzleriniSil();
     setGirisYapildiMi(false);
     setKullaniciAdi(null);
     // Önbellekte önceki kullanıcının verisi kalmasın.
@@ -56,6 +62,8 @@ export function OturumSaglayici({ children }: { children: ReactNode }) {
   // Token yenilemesi başarısız olduğunda istemci katmanı burayı tetikler.
   useEffect(() => {
     oturumDustugundeCalistir(() => {
+      // Zorunlu çıkış da elle çıkışla aynı temizliği yapar.
+      oturumIzleriniSil();
       setGirisYapildiMi(false);
       setKullaniciAdi(null);
       sorguIstemcisi.clear();
