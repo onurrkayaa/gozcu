@@ -25,5 +25,13 @@ COPY . /app
 
 RUN chmod +x /app/entrypoint.sh
 
+# Root olmayan kullanici: konteynerdeki bir kod calistirma acigi dogrudan root
+# yetkisiyle baslamasin. media/ ve staticfiles/ bu kullaniciya yazilabilir
+# olmali -- ikisi de calisma aninda yazilan tek yer.
+RUN useradd --create-home --uid 10001 gozcu \
+    && mkdir -p /app/media /app/staticfiles \
+    && chown -R gozcu:gozcu /app/media /app/staticfiles
+USER gozcu
+
 EXPOSE 8000
 CMD ["/app/entrypoint.sh"]

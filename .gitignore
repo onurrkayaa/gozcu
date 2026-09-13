@@ -13,6 +13,9 @@ data/
 reports/*
 !reports/*.csv
 !reports/README.md
+# Rapor gövdesinde kullanılan tek grafik: birleşik rapor GitHub'da okunurken
+# kırık görünmesin diye izlenir. Üreteci: scripts/04_kutu_boyutu_analiz.py
+!reports/recall_vs_kutu_boyutu.png
 # Olcum protokolu metni: sonuclar gorulmeden once sabitlenmis bir karar
 # belgesi, yeniden uretilemez. Bu yuzden .md olmasina ragmen izlenir.
 !reports/hafta7_fp_protokolu.md
@@ -30,9 +33,20 @@ egitim/kaggle_cikti/
 # Model ağırlıkları - ilk çalıştırmada otomatik iner
 *.pt
 
-# Uretilen rapor ciktilari - kaynak bolum_*.md dosyalari depoda durur
+# Uretilen rapor ciktilari.
+#
+# Kaynak bolum_*.md dosyalari depoda durur. Birlesik MARKDOWN da izlenir:
+# tek dosyada okunabilen rapor, deponun ana ciktilarindan biri ve GitHub
+# uzerinde dogrudan okunabiliyor. Uretimi saniyeler surdugu icin ciktinin
+# kaynakla ayrisma riski dusuk; scripts/06_rapor_uret.py ile yeniden uretilir.
+# PDF (4,4 MB, gomulu ekran goruntuleriyle) depoya girmez.
+rapor/GOZCU_RAPOR_TR.pdf
 rapor/rapor.md
 rapor/rapor.pdf
+
+# Django collectstatic ciktisi
+backend/staticfiles/*
+!backend/staticfiles/.gitkeep
 
 # Python
 __pycache__/

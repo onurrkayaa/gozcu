@@ -2,3 +2,6 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 media/
+staticfiles/
+.env
+*.sqlite3
