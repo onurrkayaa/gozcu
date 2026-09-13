@@ -12,6 +12,7 @@ Denetlenenler:
   - yerel mutlak yollar (/Users/..., /home/...)
   - sir gorunumlu satirlar (parola, token, API anahtari)
   - beklenmedik buyuk dosyalar
+  - markdown belgelerindeki kirik depo ici baglantilar
 
 Yalnizca GIT TARAFINDAN IZLENEN dosyalara bakar: yerelde duran veri kumesi ve
 agirliklar zaten .gitignore icindedir ve denetimin konusu degildir.
@@ -134,6 +135,40 @@ def icerik_denetle(dosyalar: list[str]) -> list[str]:
     return bulgular
 
 
+#: Markdown baglantisi: [metin](hedef). Yalnizca DEPO ICI goreli baglantilar
+#: denetlenir; http(s), mailto ve yalnizca capa (#...) olanlar atlanir.
+MD_BAGLANTI = re.compile(r"\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
+
+
+def baglantilari_denetle(dosyalar: list[str]) -> list[str]:
+    """Markdown dosyalarindaki depo ici baglantilarin hedefi var mi.
+
+    README GitHub'in vitrinidir; kirik bir baglanti orada en gorunur yerde
+    durur. Dis adresler AGA CIKILMADAN dogrulanamayacagi icin denetlenmez."""
+    bulgular = []
+    for yol in dosyalar:
+        if not yol.endswith(".md"):
+            continue
+        tam = PROJE_KOK / yol
+        try:
+            metin = tam.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+
+        for satir_no, satir in enumerate(metin.splitlines(), start=1):
+            for hedef in MD_BAGLANTI.findall(satir):
+                if hedef.startswith(("http://", "https://", "mailto:", "#", "<")):
+                    continue
+                # Capa kismi dosya adinin parcasi degildir.
+                dosya_kismi = hedef.split("#", 1)[0]
+                if not dosya_kismi:
+                    continue
+                aday = (tam.parent / dosya_kismi).resolve()
+                if not aday.exists():
+                    bulgular.append(f"{yol}:{satir_no}: kirik baglanti -> {hedef}")
+    return bulgular
+
+
 def buyuk_dosyalari_bul(dosyalar: list[str], sinir=BUYUK_DOSYA_BAYT) -> list[str]:
     bulgular = []
     for yol in dosyalar:
@@ -159,6 +194,7 @@ def main() -> int:
     bulgular = (
         yasak_yollari_bul(dosyalar)
         + icerik_denetle(dosyalar)
+        + baglantilari_denetle(dosyalar)
         + buyuk_dosyalari_bul(dosyalar, sinir)
     )
 
@@ -169,8 +205,8 @@ def main() -> int:
             print(f"  - {bulgu}")
         return 1
 
-    print("Temiz: yasak yol, sir gorunumlu satir, yerel mutlak yol veya "
-          "beklenmedik buyuk dosya bulunmadi.")
+    print("Temiz: yasak yol, sir gorunumlu satir, yerel mutlak yol, kirik "
+          "baglanti veya beklenmedik buyuk dosya bulunmadi.")
     return 0
 
 

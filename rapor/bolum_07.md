@@ -82,7 +82,7 @@ Bu davranış ölçümde bir kez beni yanılttı. Yetki matrisini çıkarırken 
 
 **Review bir ground truth değildir ve yeni bir model metriği kurmaz.** Reddedilen bir aday gerçekten yanlış pozitif olabilir, ama operatör de yanılmış olabilir. Elimdeki etiketli test kümesiyle operatör kararı iki ayrı kaynaktır ve aynı sayıya karıştırılmaları gerekmiyor. Bu bölümde inceleme kayıtlarından hiçbir doğruluk değeri türetmedim; yalnızca kaydın tutulduğunu ve erişim kurallarına uyduğunu ölçtüm.
 
-![Gözcü tespit inceleme ekranı. Gerçek veri kümesi görüntüsü üzerinde çizilmiş insan adayı kutuları, sağ panelde bir adaya verilmiş "Doğrulandı" kararı ve kararı yazan kullanıcının adı.](rapor/gorseller/hafta6/04_tespit_inceleme_karari.png)
+![Gözcü tespit inceleme ekranı. Gerçek veri kümesi görüntüsü üzerinde çizilmiş insan adayı kutuları, sağ panelde bir adaya verilmiş "Doğrulandı" kararı ve kararı yazan kullanıcının adı.](gorseller/hafta6/04_tespit_inceleme_karari.png)
 
 ---
 
@@ -142,7 +142,7 @@ Denetim kaydı on işlem türünü izliyor: üye eklendi, üye rolü değişti, 
 
 **Sınırı da yazmak gerekiyor: bu tablo bütün güvenlik olaylarının eksiksiz kanıtı değildir.** İki nedenle. Birincisi kapsam: yalnızca yukarıdaki on işlem izleniyor; okuma istekleri, başarısız giriş denemeleri ve token kullanımı izlenmiyor. İkincisi koruma katmanı: değiştirilemezlik uygulama katmanında sağlanıyor, veritabanına doğrudan erişimi olan biri yine de geçmişe müdahale edebilir. Amaç, uygulama kodunun veya bir API ucunun kazara ya da kötü niyetle geçmişi bozmasını engellemek — bundan fazlası değil.
 
-![Gözcü faaliyet geçmişi ekranı. Zaman sırasıyla listelenmiş denetim kayıtları: işlemi yapan kullanıcı, işlem türü, nesne ve önceki/sonraki değer özeti; üstte kayıtların değiştirilemeyeceğini söyleyen not.](rapor/gorseller/hafta6/05_faaliyet_gecmisi.png)
+![Gözcü faaliyet geçmişi ekranı. Zaman sırasıyla listelenmiş denetim kayıtları: işlemi yapan kullanıcı, işlem türü, nesne ve önceki/sonraki değer özeti; üstte kayıtların değiştirilemeyeceğini söyleyen not.](gorseller/hafta6/05_faaliyet_gecmisi.png)
 
 ---
 
@@ -228,7 +228,7 @@ Haritayı Leaflet ile ekledim. En önemli davranışı ne gösterdiği değil, *
 
 **Konumlu bulgu yoksa harita kabı hiç oluşturulmuyor.** Boş bir dünya haritası göstermek "konum verisi var ama işaret yok" izlenimi verirdi; oysa gerçek durum "konum verisi hiç yok". Onun yerine açıklayıcı bir boş durum çıkıyor ve piksel koordinatının haritaya konmadığı orada yazıyor. Elimdeki gerçek görevde durum tam olarak budur.
 
-![Gözcü görev ayrıntısında bulgular sekmesi, gerçek görevde. Harita yerine açıklayıcı boş durum: bu görevde konum bilgisi bulunmadığı ve piksel koordinatının haritaya çevrilmediği yazılı.](rapor/gorseller/hafta6/01_konumsuz_gorev_bos_durum.png)
+![Gözcü görev ayrıntısında bulgular sekmesi, gerçek görevde. Harita yerine açıklayıcı boş durum: bu görevde konum bilgisi bulunmadığı ve piksel koordinatının haritaya çevrilmediği yazılı.](gorseller/hafta6/01_konumsuz_gorev_bos_durum.png)
 
 **Demo uyarısı kapatılamıyor.** Harita üstündeki uyarının kapatma düğmesi yok; kaydırmayla veya tıklamayla kaybolmuyor. Kapatılabilir bir uyarı, kapatıldıktan sonra sentetik koordinatları gerçek gibi bırakırdı.
 
@@ -240,7 +240,7 @@ Haritayı Leaflet ile ekledim. En önemli davranışı ne gösterdiği değil, *
 
 **Üretim derlemesinde ayrıca doğruladım.** Leaflet'in varsayılan işaret ikonu üretim paketlemesinde kaybolan bilinen bir davranıştır ve tam olarak geliştirme kipinde görünmez. Bu yüzden ikonları kod içinde çizdim ve ölçümü üretim derlemesi üzerinde yaptım: harita kabının konumlandırması uygulanmış, 10 işaret çizilmiş, 18 karo yüklenmiş, atıf ve demo uyarısı yerinde.
 
-![Gözcü bulgular sekmesi, demo görevinde. Haritada kesikli çerçeveli işaretler, üstte kapatılamayan demo uyarısı; açık bir balonda bulgu başlığı, DEMO rozeti, konum kaynağı, koordinat ve küme bilgisi.](rapor/gorseller/hafta6/03_bulgu_balonu_ve_kume.png)
+![Gözcü bulgular sekmesi, demo görevinde. Haritada kesikli çerçeveli işaretler, üstte kapatılamayan demo uyarısı; açık bir balonda bulgu başlığı, DEMO rozeti, konum kaynağı, koordinat ve küme bilgisi.](gorseller/hafta6/03_bulgu_balonu_ve_kume.png)
 
 ---
 

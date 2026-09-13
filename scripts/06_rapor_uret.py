@@ -138,22 +138,29 @@ def birlestir(kapak_metni: str, bolumler: list[Path]) -> str:
     return "\n\n".join(parcalar) + "\n"
 
 
-def gorsel_yollarini_tasi(markdown: str, hedef_dizin: Path) -> str:
+def gorsel_yollarini_tasi(markdown: str, hedef_dizin: Path,
+                          kaynak_dizin: Path | None = None) -> str:
     """Gorsel yollarini birlesik belgenin KENDI klasorune gore yeniden yazar.
 
-    Bolum dosyalarindaki yollar depo kokune goredir (`rapor/gorseller/...`).
-    Birlesik belge `rapor/` altinda durdugu icin bu yollar oradan cozulmez ve
-    GitHub gibi markdown'i oldugu gibi goruntuleyen yerlerde gorseller kirik
-    cikar. Dosya diskte bulunabiliyorsa yol hedefe gore gorecelilestirilir;
-    bulunamiyorsa oldugu gibi birakilir."""
+    Markdown'i oldugu gibi goruntuleyen yerler (GitHub dahil) goreli yollari
+    DOSYANIN bulundugu klasore gore cozer. Bolum dosyalari `rapor/` altinda
+    durur ve yollari da oraya goredir; birlesik belge baska bir klasore
+    yazilirsa bu yollar kirilir. Dosya diskte bulunabiliyorsa yol hedefe gore
+    yeniden yazilir, bulunamiyorsa oldugu gibi birakilir.
+
+    Yol once kaynak klasore, sonra depo kokune gore aranir."""
+    import os
+
+    kokler = [k for k in (kaynak_dizin, PROJE_KOK) if k is not None]
+
     def degistir(eslesme: re.Match) -> str:
         aciklama, yol_metni = eslesme.group(1), eslesme.group(2)
-        kaynak = (PROJE_KOK / yol_metni).resolve()
-        if not kaynak.is_file():
-            return eslesme.group(0)
-        import os
-        goreceli = os.path.relpath(kaynak, hedef_dizin.resolve())
-        return f"![{aciklama}]({goreceli})"
+        for kok in kokler:
+            kaynak = (kok / yol_metni).resolve()
+            if kaynak.is_file():
+                goreceli = os.path.relpath(kaynak, hedef_dizin.resolve())
+                return f"![{aciklama}]({goreceli})"
+        return eslesme.group(0)
 
     return re.sub(r"!\[([^\]]*)\]\(([^)]+)\)", degistir, markdown)
 
@@ -442,7 +449,7 @@ def main() -> None:
 
     birlesik = birlestir(kapagi_oku(kapak), bolumler)
     md_cikti.parent.mkdir(parents=True, exist_ok=True)
-    birlesik = gorsel_yollarini_tasi(birlesik, md_cikti.parent)
+    birlesik = gorsel_yollarini_tasi(birlesik, md_cikti.parent, arg.rapor_kok)
     md_cikti.write_text(birlesik, encoding="utf-8")
     print(f"\nMarkdown : {md_cikti}  ({len(birlesik.split())} kelime)")
 

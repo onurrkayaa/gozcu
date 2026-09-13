@@ -221,7 +221,7 @@ ilişki gerçek.
 **BULGU:** Kaynaklar arası recall farkının büyük kısmını hedef boyutu açıklıyor.
 3.073 kutu üzerinden, ≥50 kutulu kaynaklarda r = +0,911.
 
-![Kaynak bazında recall ile medyan etiket kutusu boyutu arasındaki ilişki. Her nokta bir kaynağı gösterir; yatay eksen medyan kutu kenarı (alanın karekökü, piksel), dikey eksen güven eşiği 0,30'daki recall, nokta alanı o kaynaktaki kutu sayısıyla orantılıdır. Kesikli çizgi doğrusal eğilimi gösterir.](reports/recall_vs_kutu_boyutu.png)
+![Kaynak bazında recall ile medyan etiket kutusu boyutu arasındaki ilişki. Her nokta bir kaynağı gösterir; yatay eksen medyan kutu kenarı (alanın karekökü, piksel), dikey eksen güven eşiği 0,30'daki recall, nokta alanı o kaynaktaki kutu sayısıyla orantılıdır. Kesikli çizgi doğrusal eğilimi gösterir.](../reports/recall_vs_kutu_boyutu.png)
 
 Aşağıda 17 kaynağın tamamı yer alıyor. Kutu sayısı 50'nin altında olan kaynaklar
 **az örnek** olarak işaretlendi; bunların tek tek recall değerleri güvenilir sonuç

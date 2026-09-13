@@ -98,12 +98,29 @@ def test_kalin_italik_font_ailesi_kayitli(modul):
         assert pdfmetrics.getFont(yuz) is not None
 
 
-def test_gorsel_yollari_hedef_klasore_gore_yazilir(modul, tmp_path):
-    """Birlesik belge rapor/ altinda durur; depo kokune goreli yollar oradan cozulmez."""
+def test_depo_kokune_goreli_yol_hedefe_gore_yazilir(modul):
+    """Depo kokune goreli eski bir yol da hedefe gore cozulebilmeli."""
     hedef = modul.PROJE_KOK / "rapor"
     metin = "![Ekran](rapor/gorseller/hafta5/01_giris_ekrani.png)"
     sonuc = modul.gorsel_yollarini_tasi(metin, hedef)
     assert sonuc == "![Ekran](gorseller/hafta5/01_giris_ekrani.png)"
+
+
+def test_kaynak_klasore_goreli_yol_korunur(modul):
+    """Bolum dosyalarindaki yol zaten rapor/ klasorune goredir.
+
+    Cikti da ayni klasore yazildiginda yol degismemeli; kaynak klasor
+    verilmezse bu yol depo kokunden bulunamaz ve sessizce kirik kalirdi."""
+    rapor = modul.PROJE_KOK / "rapor"
+    metin = "![Ekran](gorseller/hafta5/01_giris_ekrani.png)"
+    assert modul.gorsel_yollarini_tasi(metin, rapor, rapor) == metin
+
+
+def test_kaynak_klasore_goreli_yol_baska_hedefe_tasinir(modul, tmp_path):
+    rapor = modul.PROJE_KOK / "rapor"
+    metin = "![Ekran](gorseller/hafta5/01_giris_ekrani.png)"
+    sonuc = modul.gorsel_yollarini_tasi(metin, modul.PROJE_KOK, rapor)
+    assert sonuc == "![Ekran](rapor/gorseller/hafta5/01_giris_ekrani.png)"
 
 
 def test_bulunamayan_gorsel_yolu_degistirilmez(modul):

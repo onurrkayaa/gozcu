@@ -235,7 +235,7 @@ kapanıyor, saklanan her şey siliniyor ve sorgu önbelleği temizleniyor. Çık
 temizliği yapıyor. Token hiçbir yerde adrese konmuyor — görüntüler bile başlıkla,
 ikili veri olarak indiriliyor.
 
-![Gözcü giriş ekranı. Kullanıcı adı ve parola alanları, giriş düğmesi ve hem üst şeritte hem form altında yinelenen kapsam uyarısı.](rapor/gorseller/hafta5/01_giris_ekrani.png)
+![Gözcü giriş ekranı. Kullanıcı adı ve parola alanları, giriş düğmesi ve hem üst şeritte hem form altında yinelenen kapsam uyarısı.](gorseller/hafta5/01_giris_ekrani.png)
 
 Bu görsel, kapsam uyarısının oturum açılmadan önce de göründüğünü kanıtlıyor:
 kullanıcı sistemi ilk gördüğü anda bunun bir prototip olduğunu okuyor.
@@ -284,7 +284,7 @@ Görev listesi her görev için adı, kare sayısı, kare durumlarının kırıl
 taramanın durumu, kullanılan model ve oluşturulma zamanını gösteriyor. Taraması
 olmayan görevde "Tarama yapılmadı" yazıyor — uydurma bir durum rozeti değil.
 
-![Gözcü görev listesi ekranı. Üstte kalıcı kapsam uyarısı, altında iki görevin adı, kare sayısı, kare durum kırılımı, son tarama durumu, kullanılan model ve oluşturulma zamanı.](rapor/gorseller/hafta5/02_gorev_listesi.png)
+![Gözcü görev listesi ekranı. Üstte kalıcı kapsam uyarısı, altında iki görevin adı, kare sayısı, kare durum kırılımı, son tarama durumu, kullanılan model ve oluşturulma zamanı.](gorseller/hafta5/02_gorev_listesi.png)
 
 Bu görsel iki şeyi kanıtlıyor: serializer'a eklenen salt okunur özetlerin gerçek
 veriyle dolduğunu, ve kapsam uyarısının kaydırmadan görünür olduğunu.
@@ -302,7 +302,7 @@ Tarama başlatıldığında düğme ve model seçimi kilitleniyor, ilerleme çub
 gerçek kare sayılarından hesaplanıyor ve kare tablosu durumları backend'in kendi
 değerleriyle gösteriyor.
 
-![Gözcü görev ayrıntısı, tarama sürerken. Tarama durumu Çalışıyor, ilerleme çubuğu, kare sayaçları, kilitlenmiş tarama düğmesi ve kareleri İşleniyor durumunda gösteren tablo.](rapor/gorseller/hafta5/03_gorev_ayrinti_tarama_suruyor.png)
+![Gözcü görev ayrıntısı, tarama sürerken. Tarama durumu Çalışıyor, ilerleme çubuğu, kare sayaçları, kilitlenmiş tarama düğmesi ve kareleri İşleniyor durumunda gösteren tablo.](gorseller/hafta5/03_gorev_ayrinti_tarama_suruyor.png)
 
 Bu görsel, yoklamanın çalıştığını ve çift tarama korumasının etkin olduğunu
 gösteriyor: durum "Çalışıyor" iken tarama düğmesi kapalı ve nedeni yazılı.
@@ -365,7 +365,7 @@ sapma **0,01 pikselin altında**. Yeniden boyutlandırma dayanıklılığını d
 ölçtüm: pencere daraltıldığında görüntü **802 pikselden 333 piksele** indi ve
 bütün kutular hizalı kaldı.
 
-![Gözcü tespit inceleme ekranı. Solda gerçek veri kümesi görüntüsü üzerinde çizilmiş insan adayı kutuları, sağda görüntüleme eşiği açıklaması, kare bilgisi, "Konum bilgisi mevcut değil" paneli ve güven skorlarıyla aday listesi.](rapor/gorseller/hafta5/04_tespit_inceleme.png)
+![Gözcü tespit inceleme ekranı. Solda gerçek veri kümesi görüntüsü üzerinde çizilmiş insan adayı kutuları, sağda görüntüleme eşiği açıklaması, kare bilgisi, "Konum bilgisi mevcut değil" paneli ve güven skorlarıyla aday listesi.](gorseller/hafta5/04_tespit_inceleme.png)
 
 Bu görsel bölümün üç iddiasını birden kanıtlıyor: kutular gerçek görüntü üzerinde
 oturuyor, konum paneli yokluğu açıkça söylüyor, ve aday listesi "insan adayları"
