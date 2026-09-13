@@ -159,6 +159,12 @@ This is protection at the ORM level. Someone with direct database access can
 still alter history; the goal is to stop application code or an API endpoint from
 doing it by accident or on purpose.
 
+![Audit log in the interface](images/denetim-kaydi.png)
+
+*The audit log as the operator sees it. Every entry names the actor, the object
+and the fields that changed; the header states that the records cannot be
+modified.*
+
 ## 9. Clustering
 
 Findings with coordinates are grouped by connected components (Union-Find) using
