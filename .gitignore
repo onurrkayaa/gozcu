@@ -13,7 +13,13 @@ data/
 reports/*
 !reports/*.csv
 !reports/README.md
+# Olcum protokolu metni: sonuclar gorulmeden once sabitlenmis bir karar
+# belgesi, yeniden uretilemez. Bu yuzden .md olmasina ragmen izlenir.
+!reports/hafta7_fp_protokolu.md
 reports/karo_veri_manifest_*.csv
+# Kor etiketleme kirpimlari: kaynak goruntulerden script ile yeniden
+# uretilebilir ve binlerce dosyadir; depoya girmez.
+reports/hafta7_kirpimlar/
 
 # Egitim agirliklari ve Kaggle kosu ciktisi - buyuk ikili dosyalar depoya girmez.
 # Egitim metrikleri reports/model512_egitim.csv olarak ayrica izleniyor.
