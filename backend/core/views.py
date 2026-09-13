@@ -10,6 +10,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .models import (
     AuditLog,
@@ -54,6 +56,30 @@ def _nokta_yap(enlem, boylam):
         return None
     # Point(x, y) = Point(boylam, enlem). Sira burada tek yerde belirleniyor.
     return Point(float(boylam), float(enlem), srid=4326)
+
+
+class GirisTokenView(TokenObtainPairView):
+    """Giris ucu -- kendi hiz siniri kovasinda.
+
+    Genel `anon` kovasi tum kimliksiz uclar icin ortaktir; parola denemesini
+    onunla ayni butcede birakmak, saldirganin butceyi baska uclarla degil,
+    dogrudan parola denemesiyle harcamasi demekti. Bu yuzden giris ayri ve dar
+    bir kovaya ("giris") alindi.
+
+    Deger bir KARARDIR, olculmus bir esik degildir ve tek basina kaba kuvvet
+    saldirisini ENGELLEMEZ; yalnizca yavaslatir.
+    """
+
+    throttle_scope = "giris"
+    throttle_classes = (ScopedRateThrottle,)
+
+
+class YenilemeTokenView(TokenRefreshView):
+    """Yenileme ucu. Giris ile AYNI kovayi paylasir: elindeki refresh token'i
+    deneyerek gecerli olani bulmaya calisan biri de ayni butceye girsin."""
+
+    throttle_scope = "giris"
+    throttle_classes = (ScopedRateThrottle,)
 
 
 @api_view(["GET"])

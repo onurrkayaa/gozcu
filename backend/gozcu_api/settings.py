@@ -1,5 +1,6 @@
 """gozcu_api ayarlari. Tum sirlar ortam degiskenlerinden okunur."""
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -42,6 +43,10 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # DEBUG kapaliyken Django statik dosya SERVIS ETMEZ. Admin panelinin CSS'i
+    # icin ayri bir web sunucusu kurmak yerine whitenoise kullaniliyor: tek
+    # surec, ek servis yok. Uygulamanin kendi arayuzu zaten nginx'ten gelir.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -95,6 +100,12 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -107,9 +118,63 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    # Hiz siniri. Degerler KARARDIR, olculmus bir esik degildir: amac kaba
+    # kuvvet denemesini yavaslatmak, mesru operator kullanimini engellememek.
+    # Giris ucu ayri ve daha dar bir kovada ("giris"), cunku parola denemesi
+    # tekil bir istekten daha maliyetlidir.
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": env("THROTTLE_ANON", "60/min"),
+        "user": env("THROTTLE_USER", "1000/hour"),
+        "giris": env("THROTTLE_GIRIS", "10/min"),
+    },
 }
 
+# CORS. Gelistirmede Vite proxy'si zaten ayni kaynaktan konusur; yine de
+# tarayiciyi dogrudan 8000'e baglayan denemeler icin DEBUG'ta serbest birakildi.
+# DEBUG kapaliyken YALNIZCA acik liste gecerlidir: joker deger yoktur, liste
+# bos birakilirsa hicbir capraz kaynak istegine izin verilmez.
 CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOWED_ORIGINS = [
+    o.strip() for o in env("DJANGO_CORS_ORIGINS", "").split(",") if o.strip()
+]
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in env("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
+]
+
+# --- Guvenlik basliklari --------------------------------------------------
+# Bunlar TLS GEREKTIRMEZ; yerel demo dahil her ortamda acik.
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+
+# TLS'e BAGLI ayarlar yalnizca gercekten HTTPS sonlandirmasi olan ortamda
+# acilir. Yerel demo dusuz HTTP uzerinde calisir; burasi kosulsuz acilirsa
+# uygulama yonlendirme dongusune girer ve oturum cerezi hic gonderilmez.
+# Bu bir KARARDIR, olculmus bir guvenlik seviyesi degil.
+HTTPS_ARKASINDA = env("DJANGO_HTTPS", "0") == "1"
+if HTTPS_ARKASINDA:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+# --- JWT ------------------------------------------------------------------
+# Sureler acikca yaziliyor: SimpleJWT varsayilanlarina guvenmek, surum
+# degistiginde oturum omrunun sessizce degismesi demek.
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(env("JWT_ACCESS_DAKIKA", "15"))),
+    "REFRESH_TOKEN_LIFETIME": timedelta(hours=int(env("JWT_REFRESH_SAAT", "12"))),
+}
 
 # --- Celery ---------------------------------------------------------------
 CELERY_BROKER_URL = env("CELERY_BROKER_URL")
