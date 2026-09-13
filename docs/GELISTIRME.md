@@ -231,6 +231,16 @@ istemciden değil veritabanından alır. Ayrıntı: [GUVENLIK.md](GUVENLIK.md).
 | Statik dosyalar | Django | whitenoise + nginx |
 | Dış portlar | 8000 (API) + 5173 (arayüz) | yalnızca 127.0.0.1:8080 |
 | PostgreSQL / Redis | yayınlanmaz | yayınlanmaz |
+| Yüklenen kareler | `backend/media/` (host klasörü) | `mediadata` adlı birim |
+
+Yüklenen karelerin üretim benzeri yığında adlı birimde durmasının sebebi izin:
+konteyner root olmayan bir kullanıcıyla (uid 10001) koşuyor ve Linux'ta host
+klasörünün sahibi başka bir kullanıcı olduğu için yazma izni alamıyor. Adlı
+birim imajdaki dizinin sahipliğini devraldığı için bu sorun oluşmuyor.
+Geliştirme override'ı host klasörünü geri bağlar; ölçüm script'leri zamanlama
+kaydını (`backend/media/zamanlama.jsonl`) konteyner dışından okuyor.
+
+`docker compose down -v` adlı birimleri de siler; yüklenen kareler gider.
 
 **TLS hiçbirinde yoktur.** Gerçek bir dağıtımda HTTPS'i önde duran bir ters
 vekil sonlandırmalı ve `DJANGO_HTTPS=1` verilmelidir.

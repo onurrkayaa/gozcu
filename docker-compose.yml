@@ -66,10 +66,14 @@ services:
       # sahte dedektore DUSULMEZ.
       ONNX_MODEL_PATH: /models/model512_best.onnx
     volumes:
-      # Yuklenen kareler ve olcum kosusunun zamanlama kaydi host'ta kalsin:
-      # konteyner yeniden kuruldugunda veri kaybolmasin, olcum script'leri de
-      # dosyayi disaridan okuyabilsin.
-      - ./backend/media:/app/media
+      # Yuklenen kareler ADLI BIRIMDE durur, host klasorunde degil.
+      #
+      # Bir host klasorunu baglamak Linux'ta calismiyor: konteyner root
+      # olmayan bir kullaniciyla (uid 10001) kosuyor ve host klasorunun sahibi
+      # baska bir kullanici oldugu icin yazma izni alamiyor. Adli birim, imajdaki
+      # /app/media dizininin sahipligini devraldigi icin bu sorun olusmuyor.
+      # Gelistirme kosumu host klasorunu docker-compose.dev.yml icinde baglar.
+      - mediadata:/app/media
       - ./agirliklar:/models:ro
       # Gercek modlu demo icin yerel veri kumesi (varsa). Yoksa dizin bos gelir
       # ve demo sentetik moda duser.
@@ -98,7 +102,8 @@ services:
       DB_PORT: 5432
       ONNX_MODEL_PATH: /models/model512_best.onnx
     volumes:
-      - ./backend/media:/app/media
+      # web ile AYNI birim: isci de ayni kareleri okuyup yaziyor.
+      - mediadata:/app/media
       - ./agirliklar:/models:ro
       - ./data:/data:ro
     command: ["celery", "-A", "gozcu_api", "worker", "--loglevel=info", "--concurrency=2"]
@@ -135,3 +140,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  mediadata:

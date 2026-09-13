@@ -7,6 +7,8 @@
 #   - Backend 8000 portundan dogrudan erisilebilir (API denemeleri, admin).
 #   - Arayuz konteyneri calismaz; `cd frontend && npm run dev` kullanilir
 #     (5173, Vite proxy'si /api isteklerini 8000'e yollar).
+#   - media/ host klasorune duser: olcum script'leri zamanlama kaydini
+#     (backend/media/zamanlama.jsonl) konteyner disindan okuyor.
 
 services:
   web:
@@ -14,6 +16,9 @@ services:
     command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
     volumes:
       - ./backend:/app
+      # Adli birimi host klasoruyle DEGISTIRIR (ayni hedef yol): olcum
+      # script'leri zamanlama kaydini konteyner disindan okuyabilsin.
+      - ./backend/media:/app/media
       - ./agirliklar:/models:ro
       - ./data:/data:ro
     ports:
@@ -24,6 +29,7 @@ services:
   worker:
     volumes:
       - ./backend:/app
+      - ./backend/media:/app/media
       - ./agirliklar:/models:ro
       - ./data:/data:ro
     environment:
