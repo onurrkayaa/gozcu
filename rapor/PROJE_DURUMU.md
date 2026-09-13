@@ -4,7 +4,7 @@ Bu dosya rapor gövdesinin parçası değildir; nerede olduğumuzu ve sıradaki 
 olduğunu tek yerde tutar. Buradaki her sayı bir çıktı dosyasından okunur ve yanında
 üreten CSV ile script yazar. Bir sayı ile bu dosya çelişirse **CSV kazanır**.
 
-Son güncelleme: Hafta 6 kapanışı — görev üyeliği, inceleme, coğrafi bulgu ve harita.
+Son güncelleme: Hafta 7 — yanlış pozitif görsel bağlam ölçümü (örneklem eksik kaldı).
 
 ---
 
@@ -21,8 +21,15 @@ raporlanmıştır.
 
 Hafta 6'da erişim görev üyeliğine oturtuldu, operatör kararı ayrı bir kayda
 alındı, coğrafi bulgu modeli PostGIS ile kuruldu, bulgular Union-Find ile
-kümelendi ve harita eklendi. **Hafta 6 kapanmıştır** (ayrıntı: bölüm 2.15–2.19).
-Sıradaki ana iş Hafta 7'dir.
+kümelendi ve harita eklendi. **Hafta 6 kapanmıştır** (ayrıntı: bölüm 2.15–2.19)
+ve `rapor/bolum_07.md` dosyasında raporlanmıştır.
+
+Hafta 7'de yanlış pozitiflerin görsel bağlamı ölçülmeye başlandı: protokol
+sonuçlar görülmeden sabitlendi, iki model eşit yanlış pozitif bütçesine
+getirildi, kör etiketleme aracı kuruldu ve etiketleme yapıldı. **Hafta 7
+kapanmamıştır**: etiketleme aracındaki bir kusur yüzünden adayların yarısı
+atlandı ve eşleştirilmiş analiz protokolün gerektirdiği örneklem sayısına
+ulaşamadı (ayrıntı: bölüm 2.21–2.25).
 
 ## 2. Ölçülenler
 
@@ -427,6 +434,156 @@ Ekran görüntüleri: `rapor/gorseller/hafta6/`
 kalan iki karelik koşudur; model doğruluğu veya hız hakkında yeni bir iddia
 kurulmadı ve 157 karelik süre koşusu tekrarlanmadı.
 
+### 2.21. Hafta 7 protokolü (KARAR — sonuçlar görülmeden sabitlendi)
+
+Hafta 4'ün göz kontrolünde bir yanlış pozitifin bir arabanın üzerine düştüğünü
+görmüştüm. Bu tek örnektir ve kanıt değildir. Hafta 7'nin işi o gözlemi
+ölçülebilir bir soruya çevirmekti: *Model-512'nin yanlış pozitif bölgeleri,
+aynı görüntülerden seçilmiş eşleştirilmiş kontrol bölgelerine göre insan
+faaliyeti işareti içerme bakımından farklı mı?*
+
+Protokol `reports/hafta7_fp_protokolu.md` dosyasında, **hiçbir aday görüntü
+açılmadan ve hiçbir kategori dağılımı hesaplanmadan** commit edildi (`0fd87c4`).
+Örnekleme, taksonomi, körleme, dışlama kuralları, istatistik planı ve kanıt
+etiketi karar kuralları orada sabittir.
+
+Sonradan iki kural düzeltildi; ikisi de eski ve yeni hâliyle protokolün içinde
+yazılı. Birincisi kalite örneğinin ne zaman seçileceği (`c84bde3`): eski kural
+etiketler kilitlendikten sonra seçmeyi söylüyordu, bu ise ikinci bir insan
+oturumu gerektiriyordu; yeni kural örneği manifestten, etiketlerden bağımsız
+seçiyor. İkincisi çapraz kontrol toleransı: Model-512'nin conf 0,30 noktasında
+hesaplanan FP 618, ölçülen 617 çıktı. Saklanan skoru tam 0,3000 olan bir tahmin
+var ve ham skoru eşiğin hemen altındaydı; dosya biçiminin bilinen bir
+sınırıdır. Kural, farkın yalnızca yuvarlamayla açıklanabildiği durumda geçmeye
+izin verecek biçimde netleştirildi. Diğer beş kontrol noktasında fark yok.
+
+### 2.22. Eşit yanlış pozitif bütçesi (ÖLÇÜM)
+
+Taban-512'nin yanlış pozitif koordinatları elimizde yoktu: mevcut kutu bazında
+dosya yalnızca gerçek kutuları içeriyor. Aynı protokolle (SAHI, karo 512,
+örtüşme 0,2, IoU 0,3, CPU) bir kez tarama yapıldı ve
+`reports/tahminler_taban512_hafta7.csv` üretildi. Tarama 16,8 dakika sürdü ve
+ölçülmüş taban çizgisini **birebir yeniden üretti**: üç eşikte TP 690/532/369,
+FP 2863/856/284. Eski dosyaların hiçbirinin üzerine yazılmadı.
+
+| Model | Çalışma eşiği | FP | FP/görüntü | Recall |
+|---|---|---|---|---|
+| Taban-512 | 0,30 | 284 | 1,8089 | 0,3804 |
+| Model-512 | 0,52 | 288 | 1,8344 | 0,6876 |
+
+Taban noktası referanstır; model eşiği, bütçeye mutlak farkı en küçük yapan
+eşik olarak eşik taramasından seçildi. **Aynı confidence değeri karşılaştırma
+noktası sayılmadı.**
+
+Her modelden 110 yanlış pozitif, kaynağa göre katmanlı olarak örneklendi (VRD'nin
+tamamı, ZRI'dan seyreltilmiş örnek) ve her biri için aynı görüntüden, aynı
+ölçülerde, gerçek insan kutularıyla ve modelin tahminleriyle çakışmayan bir
+kontrol bölgesi üretildi. Toplam 440 aday, 880 kırpım. Manifest körlenmiştir:
+model, FP/kontrol ayrımı, skor, kaynak öneki ve gerçek dosya adı içermez.
+
+### 2.23. Etiketleme ve araçta bulunan kusur
+
+Kör etiketleme aracı ayrı bir yerel sayfa olarak kuruldu; üretim operatör
+arayüzüne ve Django arka ucuna bağlı değil, üretim derlemesine de girmiyor.
+
+Etiketleme sırasında araçta bir kusur ortaya çıktı: alt kategori tuşuna
+basıldığında kaydetme işlemi `setTaslak` güncelleyicisinin **içinde**
+çağrılıyordu. React güncelleyiciyi saf sayar ve StrictMode altında iki kez
+çalıştırır; bu yüzden her etiketten sonra kayıt ve ilerleme iki kez tetiklendi
+ve bir sonraki aday hiç gösterilmeden geçildi. Kapsam dosyasında bu, ilk 12
+adaydan sonra düzenli bir atla-etiketle deseni olarak görünüyor.
+
+Kusur düzeltildi (`d4e5042`): yan etki güncelleyicinin dışına alındı. Testin
+bunu görmemesinin sebebi aracı StrictMode'suz kurmasıydı; test üretimdeki gibi
+StrictMode içinde kuruldu ve üç regresyon testi eklendi. Kusurlu koda geri
+dönüldüğünde testler tam olarak bu deseni yakalıyor.
+
+**Etiketlenen kayıtlar geçerlidir** — her biri gerçekten görülmüş bir adaya
+aittir. Ama kapsam eksik kaldı:
+
+| Büyüklük | Planlanan | Gerçekleşen |
+|---|---|---|
+| Ana tur ekranı | 440 | 226 |
+| Kalite turu ekranı | 44 | 22 |
+| Tam çift (FP + kendi kontrolü) | 220 | 55 |
+| Birincil analizde geçerli çift | ≥ 100 | **45** |
+
+Atlamalar çiftin iki üyesini birbirinden ayırdığı için kayıp, etiket sayısının
+iki katı oranında büyüdü: 116 çiftte yalnızca bir üye etiketli ve
+eşleştirilmiş tasarımda bunlar kullanılamıyor. Belirsiz etiketler yüzünden 10
+çift daha düştü.
+
+### 2.24. Birincil sonuç (İLGİNÇ AMA KANITLANMAMIŞ)
+
+45 geçerli çift, 35 görüntü:
+
+| Büyüklük | Değer |
+|---|---|
+| FP bölgelerinde insan faaliyeti (ağırlıklı) | 0,793 |
+| Kontrol bölgelerinde insan faaliyeti (ağırlıklı) | 0,318 |
+| Ağırlıklı eşleştirilmiş fark | +0,4751 |
+| %95 güven aralığı (görüntü düzeyinde küme bootstrap) | [0,2623; 0,6609] |
+| Uyumsuz çiftler | FP lehine 23, kontrol lehine 3 |
+| Eşleştirilmiş odds oranı | 7,6667 |
+| McNemar (tam binom) p | 9·10⁻⁵ |
+| Duyarlılık: belirsiz → yok / → var | +0,4369 / +0,4678 |
+
+Kanıt etiketi **İLGİNÇ AMA KANITLANMAMIŞ**. Protokolün BULGU koşullarından
+dördü sağlandı — aralık sıfırı beklenen yönde dışlıyor, iki duyarlılık analizi
+de aynı yönde, yeniden-test uyumu eşiğin üstünde ve yön hiçbir kaynakta
+tersine dönmüyor — ama **geçerli çift sayısı 100'ün altında** olduğu için
+bağımsız bir sonuç kurulmuyor. Karar kuralı sonuç görülmeden bağlanmıştı ve
+sonuca göre değiştirilmedi.
+
+**Bu bir ilişki ölçümüdür; nedensellik iddiası taşımaz.** Model "insan
+faaliyetini anlıyor" denemez, yanlış pozitiflerin sebebi insan faaliyetidir
+denemez.
+
+**Yorumu sınırlayan önemli bir gözlem:** geçerli çiftlerdeki 45 yanlış
+pozitifin 20'si alt kategori olarak `insan_suphesi` etiketi aldı — yani
+etiketleyen o bölgede gerçek bir insan olabileceğini veya etiket eksikliği
+olabileceğini düşündü — ve bu 20'sinin hepsi "insan faaliyeti var" sayıldı.
+Ölçülen farkın bir kısmı, görsel bağlamdan değil **etiket eksikliğinden**
+geliyor olabilir. Bu ayrım ölçülmedi ve ayrı bir iş olarak açık duruyor.
+
+**Etiket kalitesi.** Yeniden-test turunda karşılaştırılabilen kayıt sayısı
+yalnızca 14 (kalite turu da atlamalardan etkilendi). İkili alanda uyum 1,00,
+üç alan birden 0,7143. Bu **tek etiketleyici yeniden-test tutarlılığıdır,
+annotatorlar arası güvenilirlik değildir** ve 14 kayıtla güçlü bir tutarlılık
+iddiası kurulamaz. Ana turda belirsiz oranı %7,08; görüntü yetersiz ve yeniden
+inceleme işareti hiç kullanılmadı.
+
+### 2.25. Model, kaynak ve kategori kırılımları (hiçbiri bağımsız yorumlanamaz)
+
+| Grup | Geçerli çift | Ağırlıklı fark | %95 aralık | Örnek |
+|---|---|---|---|---|
+| Model-512 | 19 | +0,5305 | [0,1856; 0,8241] | bağımsız sonuç değil |
+| Taban-512 | 26 | +0,4426 | [0,1642; 0,6870] | bağımsız sonuç değil |
+| ZRI | 32 | +0,4942 | [0,2512; 0,7007] | bağımsız sonuç değil |
+| ZRI hariç (VRD) | 13 | +0,3077 | [0,0000; 0,6154] | bağımsız sonuç değil |
+
+Dört grubun dördü de 50 çiftin altında. **İki modelin yanlış pozitif bağlam
+dağılımının farklı olup olmadığı bu veriyle söylenemez** ve ilişkinin ZRI'ya
+bağlı olup olmadığı da ayrılamadı. VRD'deki 31 gerçek hedef sayısı ile buradaki
+13 çift farklı büyüklüklerdir; karıştırılmamalıdır.
+
+Alt kategori sayımlarında yanlış pozitif tarafında `insan_suphesi` (20) ve
+`altyapi_ekipman` (14), kontrol tarafında `dogal_bitki` (19) ve `yol_patika`
+(12) öne çıkıyor. Hepsi 50'nin altında.
+
+**GRO araba gözleminin gerçek kapsamı.** Araç kategorisi etiketlenen yanlış
+pozitiflerde **0 kez** görüldü. Ayrıca test bölümünde GRO kaynaklı görüntü
+zaten yok (87 ZRI + 70 VRD = 157). Yani Hafta 4'teki araba örneği bu ölçümle
+genellenemedi ve **tekil bir örnek olarak kalıyor**. Araç kategorisinin
+tekrarlayıp tekrarlamadığı, bu örneklemde cevaplanamadı.
+
+**Ürün davranışı kararı: sıralama değişmedi.** Kanıt yeterli olmadığı için
+operatör sıralamasına insan faaliyeti bağlamı eklenmedi; yeni bir heuristic,
+yeni bir model veya otomatik "insan faaliyeti skoru" yazılmadı. Review'ın ve
+model çıktısının anlamı değişmedi. Ölçüm doğrudan bir ürün kuralına
+çevrilmedi.
+
+
 ## 3. Açık kısıtlar
 
 - **Kaynak aşinalığı:** Test hedeflerinin 939/970'i ZRI kaynağından ve ZRI eğitimde de
@@ -459,6 +616,18 @@ kurulmadı ve 157 karelik süre koşusu tekrarlanmadı.
   ucunun kazara ya da kötü niyetle geçmişi bozmasını engellemek.
 - **Tarama iptali/yeniden başlatma yok:** Backend'de böyle bir uç yok, arayüz de
   uydurma düğme göstermiyor.
+- **Hafta 7 örneklemi eksik:** Planlanan 220 çiftin 55'i tam, birincil analizde
+  45'i geçerli. Protokolün ana bulgu eşiği 100 çift. Sebep araçtaki atlama
+  kusuruydu; kusur düzeltildi, örneklem tamamlanmadı.
+- **Yanlış pozitif ile etiket eksikliği ayrılmadı:** Geçerli çiftlerdeki 45
+  yanlış pozitifin 20'si "gerçek insan olabilir / etiket şüphesi" kategorisine
+  düştü. Bunların gerçekten model hatası mı yoksa veri kümesinde eksik etiket mi
+  olduğu ölçülmedi.
+- **Kaynak bağımlılığı ayrılamadı:** ZRI 32, VRD 13 çift; ikisi de 50'nin
+  altında. İlişkinin tek bir kaynaktan gelip gelmediği söylenemez.
+- **Tek etiketleyici:** Görsel etiketler tek kişi tarafından kondu.
+  Karşılaştırılabilir yeniden-test kaydı 14 tane; annotatorlar arası
+  güvenilirlik hiç ölçülmedi.
 - **Arayüzde listeler ilk sayfayla sınırlı:** Kare listesi ve bir karedeki tespit
   listesi 20 kayıtla gösteriliyor; toplam sayı ayrıca yazılıyor.
 
@@ -473,6 +642,10 @@ kurulmadı ve 157 karelik süre koşusu tekrarlanmadı.
   koordinatlar görünebiliyor.
 - Arayüzde kullanıcı arama yok; üye eklerken kullanıcı adı elle yazılıyor.
 - Bulgu durumu ve başlığı API'den düzenlenebiliyor ama arayüze bağlanmadı.
+- Hafta 7'de yeni heuristic, yeni model veya otomatik "insan faaliyeti skoru"
+  eklenmedi; operatör sıralaması değiştirilmedi.
+- Hafta 7'de yeni bir eğitim koşusu yapılmadı; model doğruluğu yeniden
+  tanımlanmadı ve 157 karelik süre koşusu tekrarlanmadı.
 
 ## 5. Sıradaki işler
 
@@ -483,22 +656,33 @@ kurulmadı ve 157 karelik süre koşusu tekrarlanmadı.
 3. Model-320 eğitimi ve kendi ölçek tabanına karşı değerlendirilmesi.
 4. ≥ 80 px bandındaki düşüşün kenar kuralıyla nedensel bağı (eğitim verisi tarafı ölçüldü,
    model tarafı ölçülmedi).
+5. **Hafta 7'nin birincil sorusu açık:** eşleştirilmiş karşılaştırma 100 çifte
+   ulaşmadı. Kalan 214 ana ve 22 kalite ekranı etiketlendiğinde soru
+   cevaplanabilir; protokol, adaylar, kırpımlar ve analiz zinciri hazır ve
+   değiştirilmedi.
+6. Yanlış pozitiflerin ne kadarının gerçekte eksik etiket olduğu (`insan_suphesi`
+   kategorisinin kaynağı).
+7. İki modelin yanlış pozitif bağlam dağılımının eşit FP bütçesinde farklı olup
+   olmadığı; gruplar 19 ve 26 çiftte kaldı.
+8. İlişkinin kaynağa bağlı olup olmadığı; ZRI 32, VRD 13 çift.
 
-### 5.2. Bir sonraki adımda fiilen yapılacak iş (Hafta 7)
+### 5.2. Bir sonraki adımda fiilen yapılacak iş
 
-Hafta 6 kapandı: üyelik, inceleme, coğrafi bulgu, denetim kaydı, kümeleme ve
-harita kuruldu; yedi kapının tamamı geçildi (bölüm 2.15–2.20).
+**Önce Hafta 7 kapatılmalı.** Kapatan tek iş, kör etiketlemenin kalan 236
+ekranını tamamlamaktır (214 ana + 22 kalite). Araç düzeltildi ve kaldığı yerden
+devam ediyor; protokol, örnekleme, taksonomi ve analiz kuralları sabit kaldı, o
+yüzden tamamlandığında `scripts/27_fp_analiz.py` yeniden çalıştırılıp aynı karar
+kuralı uygulanır. 220 tam çift, protokolün ≥100 eşiğini geçer ve birincil soru
+bağımsız olarak cevaplanabilir.
 
-Hafta 7'nin işi **yanlış pozitif analizidir**. Elimizde artık iki şey birden
-var: modelin ürettiği tespitler ve operatörün bunlar hakkındaki kararı. Bu
-ikisini yan yana koymak, Hafta 4'ten beri yalnızca etiketlere karşı ölçülen
-yanlış pozitiflerin gerçekte neye benzediğini incelemeyi mümkün kılıyor —
-reddedilen adaylar hangi arazi, boyut ve kontrast koşullarında yoğunlaşıyor.
+Etiketleme tamamlanırken ayrıca yapılacak olan, `insan_suphesi` kategorisine
+düşen yanlış pozitiflerin gerçekten eksik etiket olup olmadığının ayrı bir
+ölçümle sınanmasıdır; bugünkü farkın ne kadarının görsel bağlamdan, ne kadarının
+veri kümesindeki eksik etiketten geldiği bu ayrım yapılmadan söylenemez.
 
-Bu analiz yapılırken dikkat edilecek nokta şu: operatör kararı bir **etiket
-değildir**. Reddedilen bir aday gerçekten yanlış pozitif olabilir, ama operatör
-de yanılmış olabilir. İki kaynağı aynı sayıya karıştırmamak gerekiyor.
+Hafta 7 kapandıktan sonra sıradaki ana iş **Hafta 8'dir**: dağıtım, genel
+güvenlik ve sürekli entegrasyon. Bu hafta o kapsama hiç girilmedi.
 
-Bölüm 6 yazıldı (`rapor/bolum_06.md`): Hafta 5'in API sözleşmesi, arayüz
-mimarisi, oturum güvenlik sınırı, tespit geometrisi ve konum kaynağı kararını
-kaynak CSV'leriyle birlikte sunuyor.
+Bölüm 7 yazıldı (`rapor/bolum_07.md`): Hafta 6'nın görev üyeliği, rol tabanlı
+erişim, operatör incelemesi, denetim izi, coğrafi bulgu modeli, Union-Find
+kümelemesi ve haritasını kaynak CSV'leriyle birlikte sunuyor.
