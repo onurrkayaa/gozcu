@@ -48,9 +48,11 @@ Bittiğinde tarayıcıda açın: **<http://localhost:8080>**
 | `demo` | sahip (owner) | Tarama başlatır, inceler, üye ekler |
 | `demo_izleyici` | izleyici (viewer) | Yalnızca okur; yazma denemesi 403 alır |
 
-Parola, `./demo.sh` çıktısında yazar. **Depoda sabit bir demo parolası yoktur:**
-komut ilk çalıştığında rastgele bir parola üretip `.env` dosyasına yazar, sonraki
-çalıştırmalarda aynısını kullanır. `.env` Git'e girmez.
+Parola, `./demo.sh` çıktısında yazar. **Depoda sabit bir demo parolası yoktur.**
+`./demo.sh` ilk çalıştığında rastgele bir parola üretip `.env` dosyasına yazar ve
+sonraki çalıştırmalarda aynısını kullanır; `.env` Git'e girmez. Komutu doğrudan
+(`manage.py demo_kur`) çalıştırırsanız ve `DEMO_PAROLA` tanımlı değilse her
+koşuda yeni bir parola üretilir ve ekrana yazılır.
 
 ## 4. İzlenecek akış
 

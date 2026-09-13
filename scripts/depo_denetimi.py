@@ -75,11 +75,19 @@ METIN_UZANTILARI = {
     ".html", ".css", ".sh", ".cfg", ".ini", ".txt", ".conf", ".example",
 }
 
-#: Kendi kural listesi yuzunden eslesen dosyalar ve olcum kayitlari.
+#: Icerik taramasi disinda tutulan dosyalar. Ikisi de kendi kural listesi
+#: yuzunden eslesiyor: biri kurallarin tanimlandigi dosya, digeri o kurallarin
+#: CALISTIGINI kanitlamak icin ornek JWT ve ornek ozel anahtar metni tasiyan
+#: test dosyasi. Ucuncusu, olcum kayitlarinin komut sutunlari.
 TARAMA_DISI = {
     "scripts/depo_denetimi.py",
+    "scripts/tests/test_depo_denetimi.py",
     "reports/README.md",
 }
+
+#: Tirnak icindeki deger bir degiskenden veya komut ciktisindan geliyorsa
+#: ("$VAR", "$(komut)", "${VAR}") bu bir GOMULU sir degildir; okuma islemidir.
+DEGISKENDEN_OKUMA = re.compile(r"[:=]\s*['\"]?\$")
 
 #: Buyuk dosya siniri. Olcum CSV'leri ve rapor gorselleri bunun altinda.
 BUYUK_DOSYA_BAYT = 6 * 1024 * 1024
@@ -115,7 +123,9 @@ def icerik_denetle(dosyalar: list[str]) -> list[str]:
         fixture_mi = bool(FIXTURE_YOLLARI.search(yol))
         for satir_no, satir in enumerate(metin.splitlines(), start=1):
             for desen, aciklama in SIR_DESENLERI:
-                if aciklama == "gomulu sir gorunumlu atama" and fixture_mi:
+                if aciklama == "gomulu sir gorunumlu atama" and (
+                    fixture_mi or DEGISKENDEN_OKUMA.search(satir)
+                ):
                     continue
                 if desen.search(satir):
                     bulgular.append(f"{yol}:{satir_no}: {aciklama}")

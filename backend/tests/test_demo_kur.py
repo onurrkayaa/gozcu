@@ -120,17 +120,56 @@ class TestSentetikligiGizlemiyor:
             assert kare.longitude is None
 
 
-class TestParolaKorumasi:
-    def test_debug_kapaliyken_varsayilan_parola_reddediliyor(
-        self, db, settings, monkeypatch
+class TestParola:
+    """Depoda sabit bir demo parolasi YOKTUR.
+
+    Bilinen bir parola bir kez commit edilirse her kuruluma ayni parolayla
+    girer; bu yuzden parola verilmediginde her kosuda uretilir."""
+
+    def test_verilmezse_her_kosuda_yeni_parola_uretiliyor(
+        self, db, celery_eager, monkeypatch, django_capture_on_commit_callbacks
     ):
-        """Parola verilmemisse komut varsayilana duser; DEBUG kapaliyken bu
-        kabul EDILMEZ, cunku bilinen bir parola uretim benzeri bir kuruluma
-        girmis olur."""
-        settings.DEBUG = False
         monkeypatch.delenv("DEMO_PAROLA", raising=False)
-        with pytest.raises(CommandError, match="varsayilan demo parolasi"):
-            call_command("demo_kur", kaynak="sentetik", kare=1, stdout=io.StringIO())
+        parolalar = []
+        for _ in range(2):
+            cikti = io.StringIO()
+            with django_capture_on_commit_callbacks(execute=True):
+                call_command("demo_kur", kaynak="sentetik", kare=1,
+                             tarama_yok=True, stdout=cikti)
+            satir = [s for s in cikti.getvalue().splitlines() if "Operator" in s][0]
+            parolalar.append(satir.split("/")[-1].strip())
+        assert parolalar[0] != parolalar[1]
+        assert all(len(p) > 8 for p in parolalar)
+
+    def test_ortam_degiskeni_verilirse_ayni_parola_kullaniliyor(
+        self, db, celery_eager, monkeypatch, django_capture_on_commit_callbacks
+    ):
+        monkeypatch.setenv("DEMO_PAROLA", "elle-verilen-parola-987")
+        cikti = io.StringIO()
+        with django_capture_on_commit_callbacks(execute=True):
+            call_command("demo_kur", kaynak="sentetik", kare=1,
+                         tarama_yok=True, stdout=cikti)
+        assert "elle-verilen-parola-987" in cikti.getvalue()
+
+    def test_uretilen_parolayla_giris_yapilabiliyor(
+        self, db, celery_eager, client, monkeypatch, django_capture_on_commit_callbacks
+    ):
+        """Ekrana yazilan parola gercekten calismali; aksi halde demo kullanilamaz."""
+        from django.urls import reverse
+
+        monkeypatch.delenv("DEMO_PAROLA", raising=False)
+        cikti = io.StringIO()
+        with django_capture_on_commit_callbacks(execute=True):
+            call_command("demo_kur", kaynak="sentetik", kare=1,
+                         tarama_yok=True, stdout=cikti)
+        satir = [s for s in cikti.getvalue().splitlines() if "Operator" in s][0]
+        parola = satir.split("/")[-1].strip()
+
+        yanit = client.post(
+            reverse("token_obtain_pair"), {"username": "demo", "password": parola}
+        )
+        assert yanit.status_code == 200
+        assert "access" in yanit.json()
 
     def test_gercek_mod_model_yoksa_acik_hata_veriyor(self, db, settings):
         settings.ONNX_MODEL_PATH = ""

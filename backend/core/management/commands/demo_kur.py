@@ -24,6 +24,7 @@ Kosu:
     docker compose exec web python manage.py demo_kur --sil
 """
 import random
+import secrets
 import time
 from io import BytesIO
 from pathlib import Path
@@ -56,9 +57,11 @@ from core.tasks import run_inference
 SAHIP_ADI = "demo"
 IZLEYICI_ADI = "demo_izleyici"
 
-#: Yerel demo disinda kullanilmamasi gereken varsayilan parola. DEBUG kapaliyken
-#: komut bu degerle calismayi REDDEDER; o durumda --parola verilmesi gerekir.
-VARSAYILAN_PAROLA = "gozcu-demo-parolasi"
+#: Depoda SABIT BIR DEMO PAROLASI YOKTUR. Parola verilmezse her kosuda
+#: rastgele uretilir ve ekrana yazilir; boylece bilinen bir parola hicbir
+#: kuruluma girmez. Ayni parolayi tekrar kullanmak icin DEMO_PAROLA ortam
+#: degiskeni verilir -- demo.sh ilk kosuda bunu uretip .env'e yazar.
+PAROLA_UZUNLUGU = 12
 
 #: Gercek kareler icin aranan dizinler (konteyner ici ve konteyner disi).
 GERCEK_KARE_DIZINLERI = (
@@ -148,15 +151,13 @@ class Command(BaseCommand):
     # --- yardimcilar ------------------------------------------------------
 
     def _parolayi_coz(self, secenekler):
+        """(parola, uretildi_mi) dondurur."""
         import os
 
-        parola = secenekler["parola"] or os.environ.get("DEMO_PAROLA") or VARSAYILAN_PAROLA
-        if parola == VARSAYILAN_PAROLA and not settings.DEBUG:
-            raise CommandError(
-                "DEBUG kapaliyken varsayilan demo parolasi kullanilamaz. "
-                "--parola ile kendi parolanizi verin."
-            )
-        return parola
+        verilen = secenekler["parola"] or os.environ.get("DEMO_PAROLA")
+        if verilen:
+            return verilen, False
+        return "demo-" + secrets.token_urlsafe(PAROLA_UZUNLUGU), True
 
     def _kaynagi_sec(self, istenen, kare_sayisi):
         """(kaynak, kareler) dondurur. Gercek mod icin hem model hem veri sart."""
@@ -356,7 +357,7 @@ class Command(BaseCommand):
             )
             return
 
-        parola = self._parolayi_coz(secenekler)
+        parola, uretildi = self._parolayi_coz(secenekler)
         kaynak, kareler = self._kaynagi_sec(secenekler["kaynak"], secenekler["kare"])
         kare_sayisi = len(kareler) if kaynak == "gercek" else secenekler["kare"]
 
@@ -403,6 +404,11 @@ class Command(BaseCommand):
             self.stdout.write(f"  Kosu       : {kosu.id}")
         self.stdout.write(f"  Operator   : {SAHIP_ADI} / {parola}")
         self.stdout.write(f"  Izleyici   : {IZLEYICI_ADI} / {parola}  (salt okunur)")
+        if uretildi:
+            self.stdout.write(
+                "  (Parola bu kosuda uretildi. Ayni parolayi korumak icin "
+                "DEMO_PAROLA ortam degiskenini verin.)"
+            )
         self.stdout.write("")
         self.stdout.write(
             "UYARI: Koordinatlar sentetiktir, gercek GPS degildir. Tespitler "
