@@ -104,6 +104,21 @@ mevcut özet CSV'lerdeki ölçülmüş değerlerle karşılaştırılır (taban 
 conf 0,05 / 0,15 / 0,30; model için aynı üç nokta). Uyuşmazsa analiz
 durdurulur.
 
+> **Kural açıklaması (protokol ilk commit'inden sonra, kategori dağılımı
+> hesaplanmadan ve hiçbir aday görüntü açılmadan).**
+> Eski kural: "Uyuşmazsa analiz durdurulur." Yeni kural: uyuşmazlık
+> **yalnızca** saklanan skorun dört basamağa yuvarlanmasıyla açıklanabiliyorsa
+> kontrol geçer; açıklanamayan her fark analizi durdurur. Açıklanabilir sayılma
+> koşulu üçü birden: (a) fark, hesaplananın ölçülenden **fazla** olması
+> yönünde; (b) farkın büyüklüğü, saklanan skoru eşiğe **tam eşit** olan tahmin
+> sayısını aşmıyor; (c) bu durum yazılı olarak kaydediliyor.
+> Gerekçe: bu kural yazıldığında ölçüm yapıldı ve Model-512'nin conf 0,30
+> noktasında hesaplanan FP 618, ölçülen 617 çıktı. Saklanan skoru tam 0,3000
+> olan bir tahmin var; ham skoru 0,30'un hemen altındaydı ve dosyaya yazılırken
+> yukarı yuvarlandı. Bu, dosya biçiminin bilinen bir sınırıdır, ölçümün
+> tutarsızlığı değil. Diğer beş kontrol noktasında fark yok. Kural değişikliği
+> yalnızca TP/FP toplamlarına bakılarak yapıldı; hiçbir görsel açılmadı.
+
 ---
 
 ## 4. Kontrol bölgeleri

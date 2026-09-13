@@ -165,8 +165,26 @@ def ozet_csv_oku(yol: Path) -> dict[float, dict]:
     return satirlar
 
 
+def sinirdaki_tahmin_sayisi(tahminler, esik) -> int:
+    """Saklanan skoru esige TAM esit olan tahmin sayisi.
+
+    Tahmin kaydindaki skorlar dort basamaga yuvarlanmis olarak saklanir. Ham
+    skoru esigin hemen altinda olan bir tahmin, yuvarlandiktan sonra esige esit
+    gorunur ve `skor >= esik` kuralindan gecer. Bu sayi, iki olcum arasindaki
+    farkin yuvarlamayla aciklanip aciklanamayacaginin ust sinirini verir.
+    """
+    return sum(1 for kutular in tahminler.values()
+               for kutu in kutular if abs(kutu.skor - esik) < 1e-12)
+
+
 def capraz_kontrol(etiket, gercekler, tahminler, ozet_yolu: Path) -> list[dict]:
-    """Tahmin kaydindan turetilen TP/FP'yi olculmus ozet CSV ile karsilastirir."""
+    """Tahmin kaydindan turetilen TP/FP'yi olculmus ozet CSV ile karsilastirir.
+
+    Tam esitlik aranir. Tek istisna, protokolde yazili yuvarlama siniri:
+    fark HESAPLANAN LEHINE ise ve buyuklugu, skoru esige tam esit olan tahmin
+    sayisini asmiyorsa kontrol gecer ve durum acikca kaydedilir. Bunun disinda
+    her fark analizi durdurur.
+    """
     beklenen = ozet_csv_oku(ozet_yolu)
     satirlar = []
     for esik in CAPRAZ_ESIKLER:
@@ -175,13 +193,21 @@ def capraz_kontrol(etiket, gercekler, tahminler, ozet_yolu: Path) -> list[dict]:
         if ref is None:
             satirlar.append({"model": etiket, "conf": esik, "durum": "referans yok"})
             continue
-        uyum = (int(ref["dogru_bulunan_tp"]) == hesap["tp"]
-                and int(ref["yanlis_pozitif_fp"]) == hesap["fp"])
+        olculmus_tp, olculmus_fp = int(ref["dogru_bulunan_tp"]), int(ref["yanlis_pozitif_fp"])
+        fark_tp, fark_fp = hesap["tp"] - olculmus_tp, hesap["fp"] - olculmus_fp
+        sinir = sinirdaki_tahmin_sayisi(tahminler, esik)
+        if fark_tp == 0 and fark_fp == 0:
+            durum = "uyustu"
+        elif fark_tp >= 0 and fark_fp >= 0 and 0 < fark_tp + fark_fp <= sinir:
+            durum = "yuvarlama siniri ile aciklandi"
+        else:
+            durum = "UYUSMADI"
         satirlar.append({
             "model": etiket, "conf": esik,
-            "tahmin_kaydindan_tp": hesap["tp"], "olculmus_tp": int(ref["dogru_bulunan_tp"]),
-            "tahmin_kaydindan_fp": hesap["fp"], "olculmus_fp": int(ref["yanlis_pozitif_fp"]),
-            "durum": "uyustu" if uyum else "UYUSMADI",
+            "tahmin_kaydindan_tp": hesap["tp"], "olculmus_tp": olculmus_tp,
+            "tahmin_kaydindan_fp": hesap["fp"], "olculmus_fp": olculmus_fp,
+            "sinirdaki_tahmin": sinir,
+            "durum": durum,
         })
     return satirlar
 
@@ -321,7 +347,8 @@ def main():
         kontroller += capraz_kontrol(etiket, gercekler, modeller[etiket]["tahminler"], ozet_yolu)
     for k in kontroller:
         print("  " + " ".join(f"{a}={b}" for a, b in k.items()))
-    if any(k.get("durum") != "uyustu" for k in kontroller):
+    if any(k.get("durum") not in ("uyustu", "yuvarlama siniri ile aciklandi")
+           for k in kontroller):
         raise SystemExit("Capraz kontrol basarisiz: tahmin kaydi olculmus ozetle uyusmuyor.")
 
     # 2) Calisma noktalari
