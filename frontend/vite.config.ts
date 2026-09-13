@@ -1,6 +1,8 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
+import { etiketlemeEklentisi } from "./arastirma/etiketlemeEklentisi";
+
 // API taban adresi iki yoldan verilebilir:
 //   1. VITE_API_TABAN ortam degiskeni (uretim derlemesi icin)
 //   2. Asagidaki gelistirme proxy'si (varsayilan, ayar gerektirmez)
@@ -8,7 +10,7 @@ import react from "@vitejs/plugin-react";
 const API_HEDEF = process.env.VITE_API_PROXY_HEDEF ?? "http://localhost:8000";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), etiketlemeEklentisi()],
   server: {
     port: 5173,
     proxy: {

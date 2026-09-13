@@ -1,0 +1,62 @@
+/* Kör etiketleme aracı — yalnızca yerel araştırma. Operatör arayüzünün
+   stil dosyasından bağımsızdır; ikisi birbirini etkilemesin. */
+:root { color-scheme: dark; }
+body {
+  margin: 0;
+  background: #10151c;
+  color: #e6edf3;
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.arastirma-kabuk { max-width: 1100px; margin: 0 auto; padding: 1rem 1.2rem 3rem; }
+h1 { font-size: 1.15rem; margin: 0 0 .2rem; }
+.arastirma-bilgi { color: #9fb0c0; margin: .2rem 0 .8rem; }
+.arastirma-hata { color: #ffb4a2; }
+.kucuk { font-size: .85rem; }
+
+.etiketleme-ust {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  border: 1px solid #263141; border-radius: 8px; padding: .6rem .8rem; background: #161d27;
+}
+.kor-kimlik { font: 600 1.25rem/1 ui-monospace, monospace; letter-spacing: .06em; }
+.tur-rozeti {
+  margin-left: .6rem; font-size: .8rem; color: #ffd166;
+  border: 1px solid #5c4a1d; border-radius: 999px; padding: .1rem .5rem;
+}
+.ilerleme { margin-left: auto; color: #9fb0c0; font-size: .9rem; }
+.zaten-etiketli {
+  border: 1px solid #5c4a1d; background: #241f10; color: #ffd166;
+  border-radius: 8px; padding: .5rem .7rem; font-size: .88rem;
+}
+
+.kirpim-alani { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: .8rem 0; }
+.kirpim-alani figure { margin: 0; }
+.kirpim-alani img {
+  width: 100%; border-radius: 8px; border: 1px solid #263141;
+  background: #0b0f14; display: block; image-rendering: auto;
+}
+.kirpim-alani figcaption { color: #9fb0c0; font-size: .82rem; margin-top: .3rem; }
+
+fieldset {
+  border: 1px solid #263141; border-radius: 8px; margin: .6rem 0; padding: .5rem .7rem;
+  display: flex; flex-wrap: wrap; gap: .4rem; align-items: center;
+}
+legend { color: #9fb0c0; font-size: .82rem; padding: 0 .3rem; }
+fieldset button, .etiketleme-alt button, .etiketleme-ust button {
+  background: #1b2330; color: #e6edf3; border: 1px solid #2f3c4d;
+  border-radius: 6px; padding: .35rem .6rem; cursor: pointer; font-size: .9rem;
+}
+fieldset button.secili { background: #21405f; border-color: #4da3ff; }
+fieldset label { display: inline-flex; align-items: center; gap: .3rem; font-size: .88rem; }
+kbd {
+  background: #0b0f14; border: 1px solid #2f3c4d; border-bottom-width: 2px;
+  border-radius: 4px; padding: 0 .3rem; font: .8rem ui-monospace, monospace;
+}
+textarea { width: 100%; min-height: 3rem; background: #0b0f14; color: #e6edf3;
+  border: 1px solid #2f3c4d; border-radius: 6px; padding: .4rem; font: inherit; }
+.etiketleme-alt { display: flex; gap: .5rem; margin: .6rem 0; }
+.arastirma-bildirim {
+  border: 1px solid #2f3c4d; background: #161d27; border-radius: 8px;
+  padding: .5rem .7rem; font-size: .9rem;
+}
+:focus-visible { outline: 3px solid #ffd166; outline-offset: 2px; }
+@media (max-width: 760px) { .kirpim-alani { grid-template-columns: 1fr; } }
