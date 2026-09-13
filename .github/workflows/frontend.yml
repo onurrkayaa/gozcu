@@ -1,0 +1,40 @@
+name: Frontend
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Lint, tur denetimi, test, derleme
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # `npm ci` lockfile'i BIREBIR uygular ve node_modules'u sifirdan kurar;
+      # `npm install` gibi sessizce surum yukseltmez.
+      - name: Bagimliliklar
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: TypeScript
+        run: npx tsc -b --noEmit
+
+      - name: Testler
+        run: npm test
+
+      - name: Uretim derlemesi
+        run: npm run build

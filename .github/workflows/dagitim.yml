@@ -1,0 +1,118 @@
+name: Dagitim duman testi
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  compose:
+    name: Uretim benzeri yigin ayaga kalkiyor mu
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: CI icin .env uret
+        # Gercek sir KULLANILMAZ. Degerler bu kosuya ozeldir ve kosu bitince
+        # yok olur; uretim sirlari yalnizca yerel .env icinde durur.
+        run: |
+          cp .env.example .env
+          python3 - <<'PY'
+          import secrets
+          from pathlib import Path
+          yol = Path(".env")
+          satirlar = []
+          for satir in yol.read_text(encoding="utf-8").splitlines():
+              if satir.startswith("DJANGO_SECRET_KEY="):
+                  satir = f"DJANGO_SECRET_KEY={secrets.token_urlsafe(50)}"
+              elif satir.startswith("POSTGRES_PASSWORD="):
+                  satir = f"POSTGRES_PASSWORD={secrets.token_urlsafe(24)}"
+              elif satir.startswith("DEMO_PAROLA="):
+                  satir = f"DEMO_PAROLA=ci-demo-{secrets.token_urlsafe(8)}"
+              satirlar.append(satir)
+          yol.write_text("\n".join(satirlar) + "\n", encoding="utf-8")
+          PY
+
+      - name: PostGIS imajini CI mimarisine gore ayarla
+        # Yerelde arm64 icin imresamu/postgis kullaniliyor; runner amd64 oldugu
+        # icin burada resmi imaja doneriz.
+        run: sed -i 's|imresamu/postgis:16-3.5|postgis/postgis:16-3.5|' docker-compose.yml
+
+      - name: Imajlari derle
+        run: docker compose build
+
+      - name: Yigini baslat
+        run: docker compose up -d
+
+      - name: Servisler saglikli mi
+        run: |
+          for i in $(seq 1 40); do
+            if docker compose ps --format '{{.Service}} {{.Health}}' | grep -q '^web healthy'; then
+              echo "web healthy"
+              docker compose ps
+              exit 0
+            fi
+            sleep 5
+          done
+          docker compose ps
+          docker compose logs --tail 80
+          exit 1
+
+      - name: Saglik ucu
+        run: |
+          curl -fsS http://localhost:8080/api/health/ | tee /dev/stderr | grep -q '"status": *"ok"'
+
+      - name: Arayuz aciliyor mu
+        run: curl -fsS -o /dev/null http://localhost:8080/
+
+      - name: /media/ kapali mi
+        run: |
+          KOD=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/media/)
+          echo "media -> $KOD"
+          [ "$KOD" = "404" ]
+
+      - name: Veritabani ve Redis host'a acilmamis mi
+        run: |
+          # Yalnizca arayuzun 8080 portu yayinlanmali.
+          docker compose ps --format '{{.Service}} {{.Publishers}}'
+          ! docker compose ps --format '{{.Publishers}}' | grep -qE '"?(5432|6379)"?\}' || {
+            echo "Veritabani veya Redis host'a acilmis."; exit 1; }
+
+      - name: Demo tek komutla kuruluyor mu (sentetik)
+        run: docker compose exec -T web python manage.py demo_kur --kaynak sentetik --kare 1
+
+      - name: Demo idempotent mi
+        run: |
+          docker compose exec -T web python manage.py demo_kur --kaynak sentetik --kare 1
+          docker compose exec -T web python manage.py shell -c "
+          from core.models import Mission, Frame
+          from core.demo import TANITIM_GOREV_ADI
+          g = Mission.objects.get(name=TANITIM_GOREV_ADI)
+          n = Frame.objects.filter(mission=g).count()
+          assert n == 1, f'ikinci kosu kareleri cogaltti: {n}'
+          print('idempotent: 1 kare')
+          "
+
+      - name: Loglarda sir gorunuyor mu
+        run: |
+          GIZLI=$(grep '^DJANGO_SECRET_KEY=' .env | cut -d= -f2-)
+          if docker compose logs 2>&1 | grep -qF "$GIZLI"; then
+            echo "Gizli anahtar loglarda gorunuyor."; exit 1
+          fi
+          echo "Loglarda gizli anahtar gorunmuyor."
+
+      - name: Yeniden baslatma sonrasi veri duruyor mu
+        run: |
+          docker compose restart web worker
+          sleep 20
+          docker compose exec -T web python manage.py shell -c "
+          from core.models import Mission
+          from core.demo import TANITIM_GOREV_ADI
+          assert Mission.objects.filter(name=TANITIM_GOREV_ADI).exists()
+          print('kalicilik: demo gorevi duruyor')
+          "
+
+      - name: Yigini kapat
+        if: always()
+        run: docker compose down -v

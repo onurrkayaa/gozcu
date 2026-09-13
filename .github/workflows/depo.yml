@@ -1,0 +1,43 @@
+name: Depo denetimi
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  denetim:
+    name: Sir, artifact ve buyuk dosya kontrolu
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Gecmiste birakilmis bir sir de gorulsun diye tum gecmis cekilir.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # Calisma agacinda izlenen dosyalar: .env, agirlik, node_modules, dist,
+      # yerel mutlak yol, sir gorunumlu satir, beklenmedik buyuk dosya.
+      - name: Izlenen dosyalar
+        run: python scripts/depo_denetimi.py
+
+      # Gecmis tarama: bir dosya sonradan silinmis olsa bile commit'te durur.
+      # Bu YUZEYSEL bir taramadir; "hicbir sir sizmamistir" KANITI DEGILDIR.
+      - name: Gecmiste sir izi (yuzeysel)
+        run: |
+          set -e
+          echo "Gecmiste eklenmis yasak dosya adlari araniyor..."
+          BULUNAN=$(git log --all --diff-filter=A --name-only --pretty=format: \
+            | sort -u \
+            | grep -E '(^|/)\.env$|(^|/)kaggle\.json$|\.(pt|onnx|pem|key|p12|pfx)$' \
+            || true)
+          if [ -n "$BULUNAN" ]; then
+            echo "Gecmiste su dosyalar eklenmis:"
+            echo "$BULUNAN"
+            exit 1
+          fi
+          echo "Gecmiste yasak dosya adi bulunmadi."

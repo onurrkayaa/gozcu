@@ -1,0 +1,88 @@
+name: Backend
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Django testleri (PostGIS + Redis)
+    runs-on: ubuntu-24.04
+
+    services:
+      db:
+        # Yerelde arm64 icin imresamu/postgis kullaniliyor; CI runner'lari
+        # amd64 oldugu icin burada resmi imaj calisir.
+        image: postgis/postgis:16-3.5
+        env:
+          POSTGRES_DB: gozcu_test
+          POSTGRES_USER: gozcu
+          POSTGRES_PASSWORD: ci-parolasi-gecici
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U gozcu -d gozcu_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+
+      redis:
+        image: redis:8.10.1-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+
+    env:
+      # CI'ya ait, tek kullanimlik degerler. Gercek sir DEGILDIR ve hicbir
+      # ortamda kullanilmaz; uretim sirlari yalnizca .env icinde durur ve
+      # depoya girmez.
+      DJANGO_SECRET_KEY: ci-icin-uretilmis-gecici-anahtar-degistirilmeli
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,testserver
+      POSTGRES_DB: gozcu_test
+      POSTGRES_USER: gozcu
+      POSTGRES_PASSWORD: ci-parolasi-gecici
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/1
+      # Gercek ONNX agirligi depoda YOKTUR. Testler onu gerektirmez: model
+      # gerektiren davranislar sahte oturumla sinanir.
+      ONNX_MODEL_PATH: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: GeoDjango sistem kutuphaneleri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            binutils libproj-dev gdal-bin libgdal-dev libgeos-dev
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Bagimliliklar
+        run: pip install -r backend/requirements.txt
+
+      - name: Migration'lar eksiksiz mi
+        working-directory: backend
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Migration'lar uygulaniyor
+        working-directory: backend
+        run: python manage.py migrate --noinput
+
+      - name: Django dagitim denetimi
+        working-directory: backend
+        # --deploy, uretim ayarlarini denetler. HSTS ve guvenli cerez uyarilari
+        # (W004, W008, W012, W016) burada BEKLENIR: CI duz HTTP uzerinde kosar
+        # ve bu ayarlar yalnizca DJANGO_HTTPS=1 iken acilir. Geri kalan her
+        # uyari hata sayilir.
+        run: python manage.py check --deploy --fail-level ERROR
+
+      - name: Testler
+        working-directory: backend
+        run: pytest -q

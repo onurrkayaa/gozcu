@@ -1,0 +1,15 @@
+# Analiz script'lerinin TESTLERI icin gereken en kucuk kume.
+#
+# requirements.txt olcum kosusu icindir ve ultralytics/torch/pandas/matplotlib
+# gibi buyuk paketleri iceriri; onlari surekli entegrasyona indirmek her kosuya
+# dakikalar ekler. Buradaki testler gercek model agirligi veya veri kumesi
+# GEREKTIRMEZ, bu yuzden yalnizca su paketler gerekir.
+#
+# Surumler requirements.txt ile AYNI tutulur; ayrismasinlar.
+pytest==9.1.1
+pillow==12.3.0
+reportlab==5.0.1
+numpy==2.5.3
+onnx==1.22.0
+onnxruntime==1.30.0
+pyyaml==6.0.3
