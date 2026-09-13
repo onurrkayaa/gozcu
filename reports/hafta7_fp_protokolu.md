@@ -260,9 +260,19 @@ kanıtlanmamış" olabilir.
 
 ## 10. Etiket kalitesi
 
-- Etiketler kilitlendikten sonra, sabit tohumlu **%10'luk** bir kalite örneği
-  seçilir. Bu örnek grup bilgisinden hâlâ kördür ve karıştırılarak, önceki cevap
-  gösterilmeden aynı kişiye yeniden etiketletilir.
+- Sabit tohumlu **%10'luk** bir kalite örneği **manifestten** seçilir ve aynı
+  etiketleme oturumunun ikinci turunda, farklı bir sırayla ve önceki cevap
+  gösterilmeden yeniden etiketlenir. Örnek grup bilgisinden hâlâ kördür.
+
+  > **Kural değişikliği (protokol ilk commit'inden sonra, sonuçlar görülmeden).**
+  > Eski kural: "Etiketler kilitlendikten sonra sabit tohumlu %10'luk bir kalite
+  > örneği seçilir." Yeni kural: örnek manifestten, etiketlerden bağımsız olarak
+  > önceden seçilir ve aynı oturumun ikinci turunda etiketlenir.
+  > Gerekçe: eski kural etiketleme bittikten sonra ikinci bir insan oturumu
+  > gerektiriyordu; oysa bu iş için tek bir duraklama öngörülmüştü. Seçim
+  > etiketlerin içeriğine hiçbir aşamada bakmadığı için sonuç üzerindeki etkisi
+  > yoktur: her iki kuralda da örnek sabit tohumlu ve gruptan kördür. Değişiklik
+  > hiçbir aday görüntü açılmadan ve hiçbir dağılım hesaplanmadan yapıldı.
 - Ölçülenler: tam uyum oranı, insan faaliyeti ikili alanında uyum, belirsiz
   oranı, alt kategori uyumu.
 - Bu **tek annotator yeniden-test tutarlılığıdır**; annotatorlar arası
