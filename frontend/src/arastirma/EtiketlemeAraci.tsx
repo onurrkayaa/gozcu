@@ -161,13 +161,14 @@ export function EtiketlemeAraci() {
       const alt = durum.taksonomi.altKategoriler.find((s) => s.tus === tus);
       if (alt) {
         olay.preventDefault();
-        setTaslak((t) => {
-          const yeni = { ...t, alt_kategori: alt.deger };
-          // Alt kategori son adım: birincil seçiliyse kaydet ve ilerle.
-          if (yeni.insan_faaliyeti) void kaydet(yeni, true);
-          else setBildirim("Önce insan faaliyeti seçilmeli (v / y / b).");
-          return yeni;
-        });
+        // Kaydetme setTaslak'ın GÜNCELLEYİCİSİNİN İÇİNDE çağrılmamalı. React
+        // güncelleyiciyi saf sayar ve StrictMode altında iki kez çalıştırır;
+        // içeride kaydetmek kaydı ve ilerlemeyi iki kez tetikler, yani her
+        // etiketten sonra bir aday atlanır. Yan etki dışarıda, bir kez.
+        const yeni = { ...taslak, alt_kategori: alt.deger };
+        setTaslak(yeni);
+        if (yeni.insan_faaliyeti) void kaydet(yeni, true);
+        else setBildirim("Önce insan faaliyeti seçilmeli (v / y / b).");
         return;
       }
       const guven = durum.taksonomi.guven.find((s) => s.tus === tus);
@@ -278,13 +279,14 @@ export function EtiketlemeAraci() {
             type="button"
             title={s.aciklama}
             className={taslak.alt_kategori === s.deger ? "secili" : ""}
-            onClick={() =>
-              setTaslak((t) => {
-                const yeni = { ...t, alt_kategori: s.deger };
-                if (yeni.insan_faaliyeti) void kaydet(yeni, true);
-                return yeni;
-              })
-            }
+            onClick={() => {
+              // Klavye yolundaki ile aynı kural: yan etki güncelleyicinin
+              // dışında ve bir kez.
+              const yeni = { ...taslak, alt_kategori: s.deger };
+              setTaslak(yeni);
+              if (yeni.insan_faaliyeti) void kaydet(yeni, true);
+              else setBildirim("Önce insan faaliyeti seçilmeli (v / y / b).");
+            }}
           >
             <kbd>{s.tus}</kbd> {s.etiket}
           </button>

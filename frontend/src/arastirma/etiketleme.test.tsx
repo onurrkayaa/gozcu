@@ -5,6 +5,7 @@
  * GRUP BİLGİSİ SIZMADIĞINI doğrulamak. Sızarsa kör etiketleme kör olmaktan
  * çıkar ve ölçüm baştan geçersiz olur.
  */
+import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -62,9 +63,22 @@ function sunucuTaklidi(baslangicEtiketleri: Record<string, unknown> = {}) {
   return { taklit, gonderilen, etiketler };
 }
 
+/**
+ * Araç ÜRETİMDEKİ gibi StrictMode içinde kurulur.
+ *
+ * StrictMode olmadan kurmak gerçek bir kusuru gizledi: React, setState
+ * güncelleyicisini StrictMode altında iki kez çalıştırır, dolayısıyla
+ * güncelleyicinin içine konmuş bir yan etki iki kez tetiklenir. Test
+ * StrictMode'suz koştuğu için bunu görmedi ve araç her etiketten sonra bir
+ * adayı atladı.
+ */
 async function araciAc(baslangic: Record<string, unknown> = {}) {
   const sunucu = sunucuTaklidi(baslangic);
-  render(<EtiketlemeAraci />);
+  render(
+    <StrictMode>
+      <EtiketlemeAraci />
+    </StrictMode>,
+  );
   await screen.findByTestId("kor-kimlik");
   return sunucu;
 }
@@ -110,8 +124,31 @@ describe("klavye ile etiketleme", () => {
       kor_kimlik: "a0001", mod: "ana",
       insan_faaliyeti: "var", alt_kategori: "arac", guven: "yuksek",
     });
-    // Otomatik ilerleme
+    // Otomatik ilerleme TAM BİR aday kadar: aradaki aday atlanmamalı.
     await waitFor(() => expect(screen.getByTestId("kor-kimlik")).toHaveTextContent("a0002"));
+    expect(gonderilen).toHaveLength(1);
+  });
+
+  it("art arda üç etiket üç ardışık adayı kapsar, hiçbiri atlanmaz", async () => {
+    const kullanici = userEvent.setup();
+    const { gonderilen } = await araciAc();
+    for (const _ of [0, 1, 2]) {
+      await kullanici.keyboard("v");
+      await kullanici.keyboard("1");
+      await waitFor(() => expect(gonderilen.length).toBeGreaterThan(_));
+    }
+    expect(gonderilen.map((g) => (g as { kor_kimlik: string }).kor_kimlik)).toEqual([
+      "a0001", "a0002", "a0003",
+    ]);
+  });
+
+  it("düğmeyle etiketlemek de tek adım ilerletir", async () => {
+    const kullanici = userEvent.setup();
+    const { gonderilen } = await araciAc();
+    await kullanici.click(screen.getByRole("button", { name: /İnsan faaliyeti VAR/ }));
+    await kullanici.click(screen.getByRole("button", { name: /1 Araç/ }));
+    await waitFor(() => expect(gonderilen).toHaveLength(1));
+    expect(screen.getByTestId("kor-kimlik")).toHaveTextContent("a0002");
   });
 
   it("güven tuşu kayda yansır", async () => {
