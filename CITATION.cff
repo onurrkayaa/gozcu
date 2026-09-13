@@ -1,0 +1,45 @@
+cff-version: 1.2.0
+title: "Gözcü — aerial search-and-rescue detection assistant"
+message: >-
+  If you use this software or refer to its results, please cite it as below.
+  Please cite the HERIDAL dataset separately using the preferred-citation entry.
+type: software
+authors:
+  - family-names: Kaya
+    given-names: Onur
+    alias: onurrkayaa
+repository-code: "https://github.com/onurrkayaa/gozcu"
+abstract: >-
+  Operator-support prototype for detecting human candidates in aerial
+  search-and-rescue imagery. Images are scanned as 512 px tiles with 20% overlap
+  so that small targets keep their original scale, and candidates are presented
+  to a human operator for review. Undergraduate graduation project; research and
+  education only.
+keywords:
+  - search-and-rescue
+  - object-detection
+  - aerial-imagery
+  - small-object-detection
+  - computer-vision
+license: AGPL-3.0-or-later
+preferred-citation:
+  type: article
+  title: >-
+    Deep Learning Approach in Aerial Imagery for Supporting Land Search and
+    Rescue Missions
+  authors:
+    - family-names: Božić-Štulić
+      given-names: Dunja
+    - family-names: Marušić
+      given-names: Željko
+    - family-names: Gotovac
+      given-names: Sven
+  journal: International Journal of Computer Vision
+  volume: 127
+  start: 1256
+  end: 1278
+  year: 2019
+  doi: 10.1007/s11263-019-01177-1
+  notes: >-
+    The HERIDAL dataset used by this project. The dataset itself is not included
+    in the repository.
