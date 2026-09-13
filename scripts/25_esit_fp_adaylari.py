@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Esit FP butcesinde iki modelin yanlis pozitiflerini ve kontrol bolgelerini secer.
+"""Yakin FP calisma noktalarinda iki modelin yanlis pozitiflerini ve kontrollerini secer.
+
+DOSYA ADI YANILTICI OLABILIR: secilen nokta tabanin FP/goruntu degerine EN YAKIN
+olan esiktir, tam esit veya butceyi asmayan degil. Olculen kosuda Model-512'nin
+noktasi tabani 0,0255 FP/goruntu (4 kutu) asti. Karsilastirma "esit FP butcesi"
+diye adlandirilamaz; dogru ifade "yakin FP calisma noktalari"dir.
 
 Ne yapar:
 
@@ -356,7 +361,7 @@ def main():
     butce = taban_ozet["fp_goruntu_basina"]
     model_esik, model_ozet, _egri = butceye_en_yakin_esik(
         gercekler, modeller["Model-512"]["tahminler"], butce)
-    print(f"\n=== CALISMA NOKTALARI (esit FP butcesi) ===")
+    print("\n=== CALISMA NOKTALARI (YAKIN FP; tam esit degil) ===")
     print(f"  Taban-512 conf={TABAN_CALISMA_ESIGI}  FP={taban_ozet['fp']}  "
           f"FP/gor={taban_ozet['fp_goruntu_basina']:.4f}  recall={taban_ozet['recall']:.4f}")
     print(f"  Model-512 conf={model_esik:.2f}  FP={model_ozet['fp']}  "
