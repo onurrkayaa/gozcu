@@ -49,6 +49,10 @@ FONT_ADAYLARI = {
         "/System/Library/Fonts/Supplemental/Arial Italic.ttf",
         "/Library/Fonts/Arial Italic.ttf",
     ],
+    "Govde-BoldItalic": [
+        "/System/Library/Fonts/Supplemental/Arial Bold Italic.ttf",
+        "/Library/Fonts/Arial Bold Italic.ttf",
+    ],
     "Kod": [
         "/System/Library/Fonts/Supplemental/Courier New.ttf",
         "/System/Library/Fonts/Menlo.ttc",
@@ -95,12 +99,15 @@ def fontlari_kaydet() -> bool:
     if "Govde" not in kayitli:
         return False
     # Eksik varyantlar duz govdeye duser; boylece kalin/italik istekleri hata vermez.
-    for varyant in ("Govde-Bold", "Govde-Italic"):
+    for varyant in ("Govde-Bold", "Govde-Italic", "Govde-BoldItalic"):
         if varyant not in kayitli:
             pdfmetrics.registerFont(TTFont(varyant, kayitli["Govde"]))
+    # Aileye font ADLARI yazilir, dosya YOLU degil: reportlab kalin-italik bir
+    # parcayla karsilastiginda bu degeri yuz adi olarak arar ve yol yazilirsa
+    # KeyError ile tum uretimi durdurur.
     pdfmetrics.registerFontFamily(
         "Govde", normal="Govde", bold="Govde-Bold", italic="Govde-Italic",
-        boldItalic=kayitli.get("Govde-Bold", "Govde"),
+        boldItalic="Govde-BoldItalic",
     )
     return True
 
@@ -129,6 +136,26 @@ def birlestir(kapak_metni: str, bolumler: list[Path]) -> str:
     for yol in bolumler:
         parcalar.append(yol.read_text(encoding="utf-8").strip())
     return "\n\n".join(parcalar) + "\n"
+
+
+def gorsel_yollarini_tasi(markdown: str, hedef_dizin: Path) -> str:
+    """Gorsel yollarini birlesik belgenin KENDI klasorune gore yeniden yazar.
+
+    Bolum dosyalarindaki yollar depo kokune goredir (`rapor/gorseller/...`).
+    Birlesik belge `rapor/` altinda durdugu icin bu yollar oradan cozulmez ve
+    GitHub gibi markdown'i oldugu gibi goruntuleyen yerlerde gorseller kirik
+    cikar. Dosya diskte bulunabiliyorsa yol hedefe gore gorecelilestirilir;
+    bulunamiyorsa oldugu gibi birakilir."""
+    def degistir(eslesme: re.Match) -> str:
+        aciklama, yol_metni = eslesme.group(1), eslesme.group(2)
+        kaynak = (PROJE_KOK / yol_metni).resolve()
+        if not kaynak.is_file():
+            return eslesme.group(0)
+        import os
+        goreceli = os.path.relpath(kaynak, hedef_dizin.resolve())
+        return f"![{aciklama}]({goreceli})"
+
+    return re.sub(r"!\[([^\]]*)\]\(([^)]+)\)", degistir, markdown)
 
 
 # --- Markdown -> PDF -----------------------------------------------------------
@@ -220,10 +247,20 @@ def tablo_uret(satirlar: list[str], st: dict, genislik: float) -> Table:
     return tablo
 
 
+#: Gorselin altindaki aciklama yazisi ve bosluklar icin ayrilan yer (punto).
+#: Gorsel, cerceve yuksekliginden bu kadari dusuldukten sonrasina sigdirilir.
+GORSEL_ACIKLAMA_PAYI = 34
+
+
 def gorsel_uret(yol_metni: str, aciklama: str, st: dict, genislik: float,
-                kokler: list[Path]) -> list:
+                yukseklik: float, kokler: list[Path]) -> list:
     """Markdown resim sozdiziminden bir gorsel ve altina aciklama yazisi uretir.
-    Gorsel, en-boy orani korunarak sayfa genisligine sigdirilir."""
+
+    Gorsel, en-boy orani korunarak sayfaya sigdirilir. Olcek HEM genislige HEM
+    yukseklige bakar: rapordaki ekran goruntulerinin bir kismi dar ve cok uzun
+    (bir tarayici sayfasinin tamami). Yalnizca genislige bakilirsa bunlar
+    cerceveden tasar ve reportlab tum PDF uretimini LayoutError ile durdurur.
+    """
     aday = None
     for kok in kokler:
         olasi = (kok / yol_metni).resolve()
@@ -237,7 +274,8 @@ def gorsel_uret(yol_metni: str, aciklama: str, st: dict, genislik: float,
     from reportlab.lib.utils import ImageReader
 
     asil_g, asil_y = ImageReader(str(aday)).getSize()
-    olcek = min(genislik / asil_g, 1.0)
+    kullanilabilir_y = max(yukseklik - GORSEL_ACIKLAMA_PAYI, 1)
+    olcek = min(genislik / asil_g, kullanilabilir_y / asil_y, 1.0)
     parcalar = [Spacer(1, 6),
                 Image(str(aday), width=asil_g * olcek, height=asil_y * olcek)]
     if aciklama:
@@ -247,7 +285,8 @@ def gorsel_uret(yol_metni: str, aciklama: str, st: dict, genislik: float,
     return parcalar
 
 
-def akis_uret(markdown: str, st: dict, genislik: float, kokler: list[Path] | None = None) -> list:
+def akis_uret(markdown: str, st: dict, genislik: float, yukseklik: float,
+              kokler: list[Path] | None = None) -> list:
     """Markdown metnini reportlab akis nesnelerine (Flowable) cevirir."""
     akis: list = []
     kokler = kokler or [PROJE_KOK]
@@ -281,7 +320,8 @@ def akis_uret(markdown: str, st: dict, genislik: float, kokler: list[Path] | Non
         # Gorsel: ![aciklama](yol)
         gorsel = re.fullmatch(r"!\[(.*)\]\(([^)]+)\)", kirpik)
         if gorsel:
-            akis.extend(gorsel_uret(gorsel.group(2), gorsel.group(1), st, genislik, kokler))
+            akis.extend(gorsel_uret(gorsel.group(2), gorsel.group(1), st,
+                                    genislik, yukseklik, kokler))
             i += 1
             continue
 
@@ -382,7 +422,7 @@ def pdf_uret(markdown: str, hedef: Path, kokler: list[Path]) -> Path:
         tuval.drawCentredString(A4[0] / 2, 10 * mm, str(tuval.getPageNumber()))
         tuval.restoreState()
 
-    belge.build(akis_uret(markdown, st, genislik, kokler),
+    belge.build(akis_uret(markdown, st, genislik, belge.height, kokler),
                 onFirstPage=sayfa_alti, onLaterPages=sayfa_alti)
     return hedef
 
@@ -402,6 +442,7 @@ def main() -> None:
 
     birlesik = birlestir(kapagi_oku(kapak), bolumler)
     md_cikti.parent.mkdir(parents=True, exist_ok=True)
+    birlesik = gorsel_yollarini_tasi(birlesik, md_cikti.parent)
     md_cikti.write_text(birlesik, encoding="utf-8")
     print(f"\nMarkdown : {md_cikti}  ({len(birlesik.split())} kelime)")
 
@@ -414,7 +455,7 @@ def main() -> None:
             "birlesik markdown yazildi. --pdf-yok ile bu adimi atlayabilirsiniz."
         )
     # Gorsel yollari once rapor klasorune, sonra proje kokune gore aranir.
-    print(f"PDF      : {pdf_uret(birlesik, pdf_cikti, [arg.rapor_kok, PROJE_KOK])}")
+    print(f"PDF      : {pdf_uret(birlesik, pdf_cikti, [md_cikti.parent, arg.rapor_kok, PROJE_KOK])}")
 
 
 if __name__ == "__main__":
