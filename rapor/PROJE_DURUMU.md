@@ -4,7 +4,8 @@ Bu dosya rapor gövdesinin parçası değildir; nerede olduğumuzu ve sıradaki 
 olduğunu tek yerde tutar. Buradaki her sayı bir çıktı dosyasından okunur ve yanında
 üreten CSV ile script yazar. Bir sayı ile bu dosya çelişirse **CSV kazanır**.
 
-Son güncelleme: Hafta 7 kapanışı — yanlış pozitif görsel bağlam ölçümü.
+Son güncelleme: Hafta 8 kapanışı — güvenlik, sürekli entegrasyon, üretim benzeri
+dağıtım, tek komutluk demo ve rapor derlemesi.
 
 ---
 
@@ -31,8 +32,14 @@ analiz yürütüldü. **Hafta 7 kapanmıştır** (ayrıntı: bölüm 2.21–2.26
 `rapor/bolum_08.md` dosyasında raporlanmıştır. Kapanış sonucu **İLGİNÇ AMA
 KANITLANMAMIŞ**: beklenen yönde bir sinyal ölçüldü, ama 45 geçerli çift
 protokolün 100 çiftlik eşiğinin altında kaldı. Görsel etiketleme bir kapsam ve
-iş yükü kararıyla burada durduruldu; bu bir ölçüm sonucu değildir. Sıradaki ana
-iş Hafta 8'dir.
+iş yükü kararıyla burada durduruldu; bu bir ölçüm sonucu değildir.
+
+Hafta 8'de ölçüm yapılmadı. Üretim güvenlik ayarları sıkılaştırıldı, sürekli
+entegrasyon kuruldu, sistem üretim benzeri biçimde paketlendi, tek komutla
+çalışan bir tanıtım akışı yazıldı ve sekiz bölüm tek belgede birleştirildi.
+**Hafta 8 kapanmıştır** (ayrıntı: bölüm 2.27). Hiçbir eski ölçüm CSV'si
+değiştirilmedi, yeni model eğitilmedi, ürün davranışı ve raporun bilimsel
+sonuçları değişmedi.
 
 ## 2. Ölçülenler
 
@@ -623,6 +630,75 @@ Kapanış şu içerikle yapıldı:
   kullanılabilecek bir **araştırma borcu** olarak kaydedilmiştir; protokol,
   adaylar, kırpımlar ve analiz zinciri değiştirilmeden duruyor.
 
+### 2.27. Hafta 8 — mühendislik ve derleme (ölçüm değildir)
+
+Hafta 8'de **yeni bir ölçüm yapılmadı, yeni model eğitilmedi ve hiçbir eski CSV
+değiştirilmedi.** Yapılan iş paketleme, sertleştirme, otomasyon ve derlemedir.
+
+**Güvenlik sertleştirmesi.** Üretim benzeri yapılandırmada `DEBUG` kapalı,
+`SECRET_KEY` zorunlu ve varsayılansız, CORS yalnızca açık liste (joker yok),
+`nosniff` / `X-Frame-Options: DENY` / `Referrer-Policy: same-origin` her ortamda
+açık. TLS'e bağlı ayarlar (HSTS, güvenli çerez, HTTPS yönlendirmesi)
+`DJANGO_HTTPS=1` arkasında: duz HTTP'de açılırsa uygulama yönlendirme döngüsüne
+girer. `manage.py check --deploy`, `DJANGO_HTTPS=1` ile **sıfır uyarı** veriyor;
+varsayılan yerel kurulumda yalnızca TLS'e bağlı dört uyarı (W004, W008, W012,
+W016) kalıyor ve bunlar susturulmuyor. Giriş ve yenileme uçlarına ayrı ve dar bir
+hız sınırı kovası eklendi; **değer bir karardır, ölçülmüş eşik değildir.** JWT
+ömürleri ayardan okunuyor (erişim 15 dk, yenileme 12 saat).
+
+Kapatılmayan riskler değişmedi ve `docs/GUVENLIK.md` içinde yazılı: belirteç
+`localStorage`'da, yenileme rotasyonu yok, TLS yok, denetim kaydı yalnızca ORM
+seviyesinde korunuyor, bağımlılık taraması kapı olarak eklenmedi.
+
+**Sürekli entegrasyon.** `.github/workflows/` altında beş iş akışı: backend
+(migration denetimi + `check --deploy` + pytest, PostGIS ve Redis servisleriyle),
+arayüz (lint, TypeScript, test, üretim derlemesi), analiz script'leri, depo
+denetimi (sır/artifact/yerel yol/büyük dosya + geçmiş taraması) ve dağıtım duman
+testi. Veri kümesi ve model ağırlıkları CI'ya indirilmiyor; model gerektiren
+davranışlar sahte oturumla sınanıyor.
+
+**Üretim benzeri dağıtım.** `docker-compose.yml` artık üretim benzeri: Django
+gunicorn ile kosuyor (`runserver` değil), arayüz derlenmiş olarak nginx'ten
+geliyor (Vite dev sunucusu değil), PostgreSQL ve Redis host'a **açılmıyor**,
+dışarı açılan tek adres `127.0.0.1:8080`. Backend konteyneri root olmayan
+kullanıcıyla (uid 10001) çalışıyor; `db` ve `redis` resmi imajların kendi
+davranışında bırakıldı. Geliştirme kosumu `docker-compose.dev.yml` override'ına
+taşındı. **TLS yoktur ve bu gerçek bir internet dağıtımı değildir.**
+
+**Tek komutluk demo.** `./demo.sh` ortam dosyasını üretiyor, beş servisi
+başlatıyor, şemayı uyguluyor ve `demo_kur` yönetim komutuyla uçtan uca veri
+kuruyor: iki rol, bir görev, kareler, gerçek Celery hattında bir tarama,
+tespitler, operatör incelemeleri, bulgular, kümeleme ve denetim kaydı. Komut
+idempotent. Demo parolası depoda **sabit değildir**: ilk koşuda üretilip `.env`
+içine yazılır.
+
+Demo iki modu destekliyor ve hangisini seçtiğini ekrana yazıyor: yerel model
+dosyası ve veri kümesi varsa **gerçek** (Model-512 ONNX, gerçek HERIDAL kareleri),
+yoksa **sentetik** (üretilmiş görüntüler, `fake-v0` test dedektörü). Sentetik
+modda görev açıklaması ve komut çıktısı tespitlerin eğitilmiş bir modelin çıktısı
+**olmadığını** yazıyor. Koordinatlar **her iki modda da sentetiktir**.
+
+Demo bir ölçüm değildir: doğruluk, süre veya saha kabiliyeti hakkında hiçbir sayı
+üretmez.
+
+**Rapor derlemesi.** Sekiz bölüm `rapor/GOZCU_RAPOR_TR.md` dosyasında birleştirildi
+(39.786 kelime, 96 sayfalık PDF). Birleştirme `scripts/06_rapor_uret.py` ile
+yapılıyor ve bölüm dosyaları değiştirilmiyor. Bu iş sırasında üretecin iki kusuru
+bulundu ve düzeltildi: (1) uzun ekran görüntüleri sayfa yüksekliğine
+sığdırılmadığı için PDF üretimi `LayoutError` ile duruyordu; (2) kalın-italik
+yazı tipi ailesine font adı yerine dosya yolu yazıldığı için ilk kalın-italik
+parçada `KeyError` alınıyordu. İkisi için de regresyon testi yazıldı.
+
+**Belge sadeleştirmesi.** Hafta numaralı dört README (`README_hafta0.md`,
+`backend/README_hafta1.md`, `backend/README_hafta2.md`, `frontend/README.md`)
+kaldırıldı; tarihsel anlatımları zaten rapor bölümlerinde duruyor, işletim
+bilgileri `docs/GELISTIRME.md` ve `docs/GUVENLIK.md` dosyalarında birleştirildi.
+Ana `README.md` yeniden yazıldı. Demo verisi üretimi iki komutta kopyalanmak
+yerine `backend/core/demo.py` içinde tek yere alındı; `demo_konum_uret` komutunun
+adı ve davranışı korundu, çünkü Hafta 6 ölçüm kayıtları o ada atıf yapıyor.
+
+**Mülakat notları.** `rapor/MULAKAT_NOTLARI.md` — proje dışı bir yardımcı belge;
+rapor gövdesinin parçası değildir ve hiçbir yeni iddia içermez.
 
 ## 3. Açık kısıtlar
 
@@ -643,7 +719,7 @@ Kapanış şu içerikle yapıldı:
   yüzden arayüz konum gösteremiyor ve harita kurulamıyor (bölüm 2.12–2.13).
 - **JWT localStorage'da:** Backend HTTP-only çerez desteklemediği için token
   tarayıcı deposunda duruyor. Bir XSS açığı oturumun çalınması demektir; kabul
-  edilen prototip sınırı budur ve `frontend/README.md` içinde yazılıdır.
+  edilen prototip sınırı budur ve `docs/GUVENLIK.md` içinde yazılıdır.
   Yenileme ucu rotasyon yapmıyor: çalınan bir refresh token ömrü boyunca
   geçerli kalıyor.
 - **Kümeleme eşiği ölçülmedi:** 50 metre bir karardır. Gerçek uçuş verisi
@@ -691,6 +767,16 @@ Kapanış şu içerikle yapıldı:
   eklenmedi; operatör sıralaması değiştirilmedi.
 - Hafta 7'de yeni bir eğitim koşusu yapılmadı; model doğruluğu yeniden
   tanımlanmadı ve 157 karelik süre koşusu tekrarlanmadı.
+- Hafta 8'de hiçbir ölçüm yapılmadı, hiçbir eski CSV değiştirilmedi ve 157
+  karelik uzun tarama tekrarlanmadı.
+- Raporun İngilizce çevirisi yapılmadı. Ana `README.md` içinde İngilizce bir
+  özet var; rapor gövdesinin tamamı Türkçedir.
+- Sızma testi, otomatik güvenlik tarayıcısı ve bağımlılık denetimi (`pip-audit`,
+  `npm audit`) **çalıştırılmadı**. "Temiz" denmiyor; çalıştırılmadı deniyor.
+- Gerçek internet dağıtımı yapılmadı: alan adı, TLS sertifikası, bulut hesabı
+  ve yük testi yok.
+- Uzak sürekli entegrasyonun yeşil olduğu bu belge yazılırken henüz
+  doğrulanmamıştı; iş akışları yazıldı ve yerel karşılıkları geçiyor.
 
 ## 5. Sıradaki işler
 
@@ -711,27 +797,30 @@ Kapanış şu içerikle yapıldı:
    19 ve 26 çiftte kaldı ve çalışma noktaları tam eşit değildi.
 8. İlişkinin kaynağa bağlı olup olmadığı; ZRI 32, VRD 13 çift.
 
-### 5.2. Bir sonraki adımda fiilen yapılacak iş (Hafta 8)
+### 5.2. Teslimden önce yapılması gerekenler
 
-Hafta 7 kapandı. Sıradaki ana iş **Hafta 8'dir** ve içeriği ölçüm değil,
-mühendislik ve derleme işidir:
+1. Uzak sürekli entegrasyonun (GitHub Actions) ilk koşusunun yeşil olduğunu
+   doğrulamak. İş akışları yazıldı ve yerel karşılıkları geçiyor; uzak koşu
+   ilk push'tan sonra görülecek.
+2. Birleşik raporun PDF çıktısını teslim biçimine göre üretmek
+   (`python scripts/06_rapor_uret.py --md-cikti rapor/GOZCU_RAPOR_TR.md
+   --pdf-cikti rapor/GOZCU_RAPOR_TR.pdf`). PDF depoya girmez.
 
-- **Güvenlik:** oturum belirtecinin tarayıcı deposunda durması, yenileme
-  ucunun rotasyon yapmaması ve üretim ayarlarının gözden geçirilmesi. Üçü de
-  önceki haftalarda açık kısıt olarak kaydedilmişti.
-- **Sürekli entegrasyon:** üç test paketinin, lint ve tür denetiminin her
-  değişiklikte otomatik çalışması.
-- **Dağıtım:** sistemin tek komutla ayağa kalkacak biçimde paketlenmesi ve
-  kurulum adımlarının yazılması.
-- **Gösterim:** uçtan uca çalışan bir tanıtım akışı.
-- **Rapor bütünlemesi:** sekiz bölümün tek belgede birleştirilmesi,
-  numaralandırmanın ve çapraz atıfların tutarlı hâle getirilmesi.
-- **İngilizce çeviri** ve son kanıt denetimi: her sayının kaynağının ve her
-  bağlantının yerinde olduğunun doğrulanması.
+### 5.3. Kullanıcının depo dışında yapacağı işler
 
-Hafta 7'nin kalan görsel etiketlemesi bu listeye **dâhil değildir**; araştırma
-borcu olarak bölüm 5.1'de duruyor.
+1. Kaggle'daki boş veya başarısız notebook'ların temizliği — yerel depodan
+   yapılamaz, Kaggle hesabından yapılır.
+2. Özgeçmişteki depo bağlantısının güncel olduğunun doğrulanması.
+3. Depoyu herkese açık yayımlama kararı ve GitHub'da açıklama/etiket alanlarının
+   doldurulması.
 
-Bölüm 8 yazıldı (`rapor/bolum_08.md`): yanlış pozitiflerin görsel bağlamı
-sorusunu, eşleştirilmiş kontrol tasarımını, körlemeyi, etiketleme aracındaki
-kusuru ve 45 çiftlik nihai sonucu sınırlarıyla birlikte sunuyor.
+### 5.4. Gelecekteki araştırma (aktif iş değildir)
+
+Bölüm 5.1'deki sekiz maddenin tamamı buraya girer. Hiçbiri Hafta 8'de ele
+alınmadı ve alınması planlanmadı.
+
+### 5.5. Kapsam dışı
+
+- **Sievert** adlı yan proje bu deponun kapsamı dışındadır ve burada izlenmez.
+- Gerçek internet dağıtımı, alan adı, TLS sertifikası ve bulut hesabı bu projede
+  **yoktur** ve planlanmamıştır.

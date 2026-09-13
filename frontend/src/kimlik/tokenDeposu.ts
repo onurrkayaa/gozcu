@@ -14,7 +14,7 @@
  *   - localStorage: sayfa yenilemesinde oturum sürer; bedeli, XSS açığı olursa
  *     token'ın okunabilmesidir.
  *
- * Bu prototipte localStorage seçildi ve risk frontend/README.md'de yazılıdır.
+ * Bu prototipte localStorage seçildi ve risk docs/GUVENLIK.md içinde yazılıdır.
  * HTTP-only çerez desteği eklenirse değişmesi gereken tek yer burasıdır.
  *
  * Token URL'ye, log'a veya Git'e YAZILMAZ.
